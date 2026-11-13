@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Protótipo – Editor multipáginas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@300;400&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+:root{--verde:#66cc00;--azul:#1447ff;--vermelho:#ff3b3b;--chip:#dfe3f3;--card:#f4f4f6;--marca:#ececec;--borda:#3b5bff;
+  --bg:#e9e9ee;--panel:#fff;--tx:#1b1b1f;--mut:#666;--line:#cfd3e0;--field:#fff;--sel:#e8edff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17181c;--panel:#222429;--tx:#e8e8ec;--mut:#9aa;--line:#3a3d46;--field:#1a1c20;--sel:#2a3156}}
+:root[data-theme="dark"]{--bg:#17181c;--panel:#222429;--tx:#e8e8ec;--mut:#9aa;--line:#3a3d46;--field:#1a1c20;--sel:#2a3156}
+*{box-sizing:border-box;margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--tx);font:14px/1.4 'Open Sans',Arial,sans-serif;padding:14px}
+.app{display:grid;gap:16px;grid-template-columns:minmax(300px,390px) minmax(0,1fr);align-items:start;max-width:1260px;margin:0 auto}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.editor{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.editor h1{font-size:15px}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+legend{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:0 6px}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut)}
+input[type=text],select,textarea{font:inherit;color:var(--tx);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+textarea{resize:vertical}
+button{font:inherit;font-size:12px;color:var(--tx);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer}
+button:hover{border-color:var(--azul)}
+.row{display:flex;gap:6px;align-items:center}
+.row select{flex:1}
+.pg{display:flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:3px 4px}
+.pg.on{background:var(--sel);border-color:var(--azul)}
+.pg .nm{flex:1;text-align:left;border:0;background:none;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg .nm small{color:var(--mut);display:block;font-size:10px}
+.blk{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.blk.off textarea{opacity:.45}
+.sw{flex-direction:row;align-items:center;gap:8px;color:var(--tx);font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.tag{font-size:10px;font-weight:600;color:var(--azul);border:1px solid var(--line);border-radius:10px;padding:1px 7px}
+.sw.t{flex:0}
+.hint{font-size:11px;color:var(--mut)}
+.view{display:flex;flex-direction:column;gap:18px;align-items:center;min-width:0}
+
+/* ===== arte fixa ===== */
+.wrap{width:100%;max-width:924px;container-type:inline-size}
+.page{--u:calc(100cqw / 924);--k:1;--lh:86;--pd:44;--gp:30;position:relative;overflow:hidden;background:#fff;color:#111;aspect-ratio:924/1308;width:100%;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+.m-duplo{--k:.92;--lh:66;--pd:26;--gp:16}
+.m-loteamentos{--k:.8;--lh:42;--pd:16;--gp:10}
+.m-aviso{--k:1.15}
+.page::before,.page::after{content:"";position:absolute;background:var(--marca);z-index:0}
+.page::before{width:calc(var(--u)*150);height:140%;left:calc(var(--u)*330);top:-10%;transform:skewX(-24deg)}
+.page::after{width:calc(var(--u)*110);height:60%;left:calc(var(--u)*80);top:-5%;transform:skewX(-24deg)}
+.disc{position:absolute;z-index:0;border-radius:50%;background:#f3f3f3;width:calc(var(--u)*520);height:calc(var(--u)*520);left:calc(var(--u)*200);top:calc(var(--u)*330)}
+.top{position:relative;z-index:1;height:calc(var(--u)*150)}
+.tab{position:absolute;left:0;top:calc(var(--u)*52);width:calc(var(--u)*140);height:calc(var(--u)*80);background:var(--verde);border-radius:0 0 calc(var(--u)*34) 0}
+.title{position:absolute;left:calc(var(--u)*155);top:calc(var(--u)*50);font-family:'Anton',Impact,sans-serif;font-size:calc(var(--u)*36);line-height:1.1;color:var(--verde);font-weight:400}
+.title .mes{display:block;font-family:'Oswald',Impact,sans-serif;font-weight:300;color:var(--azul);text-transform:uppercase}
+.vca{position:absolute;right:calc(var(--u)*34);top:calc(var(--u)*58);width:calc(var(--u)*146);height:calc(var(--u)*50)}
+.linha{position:relative;z-index:1;margin:0 calc(var(--u)*34) 0 calc(var(--u)*33);background:var(--azul);color:#fff;text-align:center;font-family:'Oswald',Impact,sans-serif;font-weight:300;font-size:calc(var(--u)*36);line-height:calc(var(--u)*46);height:calc(var(--u)*46);text-transform:uppercase;white-space:nowrap;overflow:hidden}
+.linha.mini{font-size:calc(var(--u)*28);line-height:calc(var(--u)*40);height:calc(var(--u)*40)}
+.stack{position:relative;z-index:1;display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+.logo{display:flex;justify-content:center;align-items:center;margin:calc(var(--u)*10) auto;height:calc(var(--u)*var(--lh))}
+.logo svg{height:100%}
+.logo .ph{border:calc(var(--u)*2) dashed #9aa4d8;color:#6a74b8;font-weight:700;font-size:calc(var(--u)*13);padding:calc(var(--u)*6) calc(var(--u)*14);border-radius:calc(var(--u)*6)}
+.box{margin:0 auto;width:calc(var(--u)*738)}
+.box h2{background:var(--verde);border:calc(var(--u)*1.5) solid var(--borda);color:#fff;text-align:center;font-size:calc(var(--u)*17*var(--k));line-height:1.3;font-weight:700;padding:calc(var(--u)*9) 0;text-transform:uppercase}
+.card{background:var(--card);border:calc(var(--u)*1.5) solid #8fa2ff;border-top:0;border-radius:0 0 calc(var(--u)*8) calc(var(--u)*8);padding:calc(var(--u)*var(--pd)) calc(var(--u)*20);display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*var(--gp));min-height:calc(var(--u)*90)}
+.bloco{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*3);width:100%}
+.l{display:table;background:var(--chip);border-radius:calc(var(--u)*7);padding:calc(var(--u)*2) calc(var(--u)*13);font-weight:700;font-size:calc(var(--u)*15.5*var(--k));line-height:1.35;text-align:center}
+.l.titulo{font-size:calc(var(--u)*20*var(--k));padding:calc(var(--u)*5) calc(var(--u)*15)}
+.l.alerta{color:var(--vermelho);font-size:calc(var(--u)*22*var(--k));padding:calc(var(--u)*4) calc(var(--u)*15)}
+.par{display:flex;justify-content:space-between;align-items:center;width:100%;gap:calc(var(--u)*20)}
+.par .bloco{width:auto}
+.b{color:var(--azul)} .r{color:var(--vermelho)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="editor" id="editor"></aside>
+  <div class="view" id="view"></div>
+</div>
+
+<script>
+/* ===== CATÁLOGOS (fixos / selecionáveis) ===== */
+const MESES = ["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
+const MODELOS = {   // modelos de página: quantos cartões e como o layout se comporta
+  residencial:{ nome:"Residencial (1 cartão)", n:1 },
+  duplo:      { nome:"Dois cartões (faixa em cada)", n:2, faixaCartao:true },
+  loteamentos:{ nome:"Loteamentos (3 cartões)", n:3 },
+  aviso:      { nome:"Aviso / mensagem", n:1 }
+};
+const EMP = {       // catálogo de empreendimentos (nome, faixa, logo)
+  "": { nome:["Condições para o ..."], faixa:"", logo:null, rot:"(sem catálogo)" },
+  "uni-ville": { nome:["Condições para o Uni Ville Residencial","1ª etapa (31/12/2027)"], faixa:"Linha: Uni Residencial", logo:"univille", rot:"Uni Ville" },
+  "dona-olivia": { nome:["Condições para Dona Olivia Universidade"], faixa:"Dona Olivia Universidade", logo:null, rot:"Dona Olivia Universidade" },
+  "baron-1": { nome:["Condições para o Baron Connect I (entregue)"], faixa:"Linha: Loteamentos", logo:null, rot:"Baron Connect I" },
+  "baron-2": { nome:["Condições para o Baron Connect II (entregue)"], faixa:"Linha: Loteamentos", logo:null, rot:"Baron Connect II" },
+  "baron-uchoa": { nome:["Condições para o Baron Uchôa (entregue)"], faixa:"Linha: Loteamentos", logo:null, rot:"Baron Uchôa" },
+  "kahakai": { nome:["Condições para o Kahakai Prado"], faixa:"VCA Praia", logo:null, rot:"Kahakai Prado" }
+};
+const TIPOS = {     // blocos prontos: título e estilo fixos
+  financiamento:{ nome:"Financiamento CEF", titulo:"FINANCIAMENTO CEF", estilo:"titulo", num:"b" },
+  facilita:     { nome:"Parcelamento Facilita", titulo:"PARCELAMENTO FACILITA", estilo:"titulo", num:"b" },
+  documentacao: { nome:"Documentação (2 colunas)", cols:2, num:"r" },
+  observacao:   { nome:"Observação", titulo:"OBSERVAÇÃO", estilo:"alerta", num:"b" },
+  prosoluto:    { nome:"Pró-soluto", tudo:"b" },
+  promocao:     { nome:"Promoção", titulo:"PROMOÇÃO", estilo:"alerta", num:"r" },
+  investidor:   { nome:"Condição investidor", titulo:"CONDIÇÃO INVESTIDOR", estilo:"titulo", num:"b" },
+  avista:       { nome:"À vista / sem juros (2 colunas)", cols:2, num:"b" },
+  texto:        { nome:"Texto livre", num:"b" }
+};
+
+/* ===== ESTADO ===== */
+const bl = (tipo, ...textos) => ({ tipo, ativo:true, textos });
+const cartao = (emp, blocos, faixa) => ({ emp, faixa: faixa ?? EMP[emp].faixa, nome:[...EMP[emp].nome], blocos });
+const seed = () => ({
+  campanha:{ titulo:"Parcelamento Matriz - BLACK FRIDAY", mes:"NOVEMBRO" },
+  paginas:[
+    { modelo:"residencial", faixa:"Linha: Uni Residencial", cartoes:[ cartao("uni-ville",[
+      bl("financiamento","Sinal de R$ 3.000,00 em até 3x\nSaldo em 50x com INCC (até a entrega) e 0,7974% a.m + IPCA (após a entrega)"),
+      bl("documentacao","Documentação GRÁTIS para\nclientes SBPE com acréscimo de\nR$ 2.000,00 no SINAL","Documentação GRÁTIS apenas\npara os clientes MCMV"),
+      bl("observacao","SE A SOMA DOS VALORES DAS PARCELAS\nINTERMEDIÁRIAS FOR 5% DO VALOR DO IMÓVEL, NÃO\nPRECISA DE APROVAÇÃO COMERCIAL"),
+      bl("prosoluto","Pró-soluto de 10%")]) ]},
+    { modelo:"duplo", faixa:"", cartoes:[
+      cartao("dona-olivia",[ bl("facilita","Sinal de 30% SEM PARCELAMENTO\nParcelamento em 40x com IPCA + 0,7974% a.m") ]),
+      { ...cartao("dona-olivia",[ bl("texto","Sinal de R$ 3.000,00, + 34X com IPCA + 10%") ],"Dona Olivia Universidade - Garagens extras"), nome:["Condições para as vagas extras do Dona Olivia Universidade"] } ]},
+    { modelo:"loteamentos", faixa:"Linha: Loteamentos", cartoes:[
+      cartao("baron-1",[ bl("texto","Sinal de tabela em até 3x sem chocar com mensais\nParcelamento em 144x conforme tabela e simulador\nTaxa 11,49% + TR"), bl("avista","Venda à vista:\n10% de desconto","PARCELAMENTO em\naté 24x sem juros.") ]),
+      cartao("baron-2",[ bl("texto","Sinal de tabela em até 3x sem chocar com mensais\nParcelamento em 144x conforme tabela e simulador\nTaxa 11,49% + TR"), bl("avista","Venda à vista:\n10% de desconto","PARCELAMENTO em\naté 24x sem juros.") ]),
+      cartao("baron-uchoa",[ bl("texto","Sinal de tabela em até 3x e parcelamento em 132x\nconforme tabela e simulador\nTaxa 9,5%"), bl("avista","Venda à vista:\n10% de desconto","") ]) ]},
+    { modelo:"aviso", faixa:"VCA Praia", cartoes:[ cartao("kahakai",[ bl("texto","Não deixe de cadastrar o seu cliente no nosso\nmais novo projeto em Prado. Com valores a\npartir de R$20.000,00 + 100x de R$1.799,99") ]) ]}
+  ]
+});
+let S; try { S = JSON.parse(localStorage.getItem("vca-proto")) } catch(e) {}
+if (!S || !S.paginas) S = seed();
+let sel = 0, todas = false;
+
+/* ===== REGRA DE COR ===== */
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const RE = /(R\$\s?[\d.,]*\d|\d+(?:,\d+)?%(?:\s?a\.m)?|\d+[xX]|INCC|IPCA)|((?<![\p{L}\p{N}])(?:GRÁTIS|SBPE|MCMV)(?![\p{L}\p{N}]))/gu;
+const cor = (txt, t) => t.tudo ? `<span class="${t.tudo}">${esc(txt)}</span>`
+  : esc(txt).replace(RE, (m,n,p) => `<span class="${p ? "r" : t.num}">${m}</span>`);
+
+/* ===== TEMPLATES DE PÁGINA ===== */
+const chips = (txt, t) => `<div class="bloco">${t.titulo ? `<div class="l ${t.estilo}">${t.titulo}</div>` : ""}${
+  txt.split("\n").filter(l => l.trim()).map(l => `<div class="l">${cor(l,t)}</div>`).join("")}</div>`;
+const LOGO = `<svg viewBox="0 0 130 86" role="img" aria-label="Uni Ville"><rect x="2" y="2" width="38" height="58" fill="#fff" stroke="#143a8c" stroke-width="3"/><circle cx="12" cy="14" r="6" fill="#ffb62e"/><path d="M5 30 Q25 28 36 8 L36 56 L5 56Z" fill="#3aa83a"/><path d="M22 56 Q22 34 36 26 L36 56Z" fill="#ffb62e"/><rect x="4" y="46" width="32" height="12" fill="#143a8c"/><text x="20" y="57" text-anchor="middle" font-family="Open Sans,Arial" font-weight="700" font-size="12" fill="#fff">UNI</text><text x="46" y="42" font-family="Georgia,serif" font-style="italic" font-size="34" fill="#143a8c">ville</text><text x="48" y="58" font-family="Open Sans,Arial" font-size="6" letter-spacing="2.5" fill="#143a8c">RESIDENCIAL</text></svg>`;
+const VCA = `<svg class="vca" viewBox="0 0 146 50" role="img" aria-label="VCA"><text x="0" y="42" font-family="Anton,Impact,sans-serif" font-style="italic" font-size="52" fill="#66cc00" textLength="146" lengthAdjust="spacingAndGlyphs" transform="skewX(-12) translate(10 0)">VCA</text><path d="M0 50 L18 6 L34 6 L16 50Z" fill="#1447ff" opacity=".9"/></svg>`;
+
+function cartaoHTML(c, m) {
+  const e = EMP[c.emp] || EMP[""];
+  const logo = e.logo === "univille" ? LOGO : `<div class="ph">logo: ${esc(e.rot === EMP[""].rot ? "empreendimento" : e.rot)}</div>`;
+  return (m.faixaCartao ? `<div class="linha mini">${esc(c.faixa)}</div>` : "") +
+    `<div class="logo">${logo}</div><section class="box"><h2>${c.nome.filter(Boolean).map(esc).join("<br>")}</h2><div class="card">${
+    c.blocos.filter(b => b.ativo).map(b => { const t = TIPOS[b.tipo];
+      return t.cols === 2 ? `<div class="par">${b.textos.map(x => chips(x,t)).join("")}</div>` : chips(b.textos[0] || "", t); }).join("")}</div></section>`;
+}
+function paginaHTML(p) {
+  const m = MODELOS[p.modelo];
+  return `<div class="wrap"><main class="page m-${p.modelo}"><div class="disc"></div><header class="top"><div class="tab"></div>
+    <div class="title">${esc(S.campanha.titulo)}<span class="mes">${esc(S.campanha.mes)}</span></div>${VCA}</header>
+    ${m.faixaCartao ? "" : `<div class="linha">${esc(p.faixa)}</div>`}
+    <div class="stack">${p.cartoes.map(c => cartaoHTML(c, m)).join("")}</div></main></div>`;
+}
+function preview() {
+  document.getElementById("view").innerHTML = (todas ? S.paginas : [S.paginas[sel]]).map(paginaHTML).join("");
+  try { localStorage.setItem("vca-proto", JSON.stringify(S)) } catch(e) {}
+  const j = document.getElementById("json"); if (j && document.activeElement !== j) j.value = JSON.stringify(S, null, 1);
+}
+
+/* ===== PAINEL DE EDIÇÃO ===== */
+const at = o => Object.entries(o).map(([k,v]) => `data-${k}="${v}"`).join(" ");
+const opts = (obj, cur, lab) => Object.entries(obj).map(([k,v]) => `<option value="${k}" ${k===cur?"selected":""}>${esc(lab(v))}</option>`).join("");
+function editor() {
+  const p = S.paginas[sel], m = MODELOS[p.modelo];
+  document.getElementById("editor").innerHTML = `
+  <h1>Editor multipáginas (protótipo)</h1>
+  <fieldset><legend>Campanha (vale para todas as páginas)</legend>
+    <label>Título<input type="text" ${at({f:"titulo"})} value="${esc(S.campanha.titulo)}"></label>
+    <label>Mês<select ${at({f:"mes"})}>${MESES.map(x=>`<option ${x===S.campanha.mes?"selected":""}>${x}</option>`).join("")}</select></label>
+  </fieldset>
+  <fieldset><legend>Páginas (${S.paginas.length})</legend>
+    ${S.paginas.map((q,i) => `<div class="pg ${i===sel?"on":""}"><button class="nm" ${at({act:"sel",p:i})}>${i+1}. ${esc(q.faixa || q.cartoes[0].faixa || "Sem faixa")}<small>${MODELOS[q.modelo].nome}</small></button>
+      <button ${at({act:"up",p:i})} aria-label="Subir página">▲</button><button ${at({act:"down",p:i})} aria-label="Descer página">▼</button><button ${at({act:"delp",p:i})} aria-label="Excluir página">✕</button></div>`).join("")}
+    <div class="row"><select id="novoModelo">${opts(MODELOS,"",v=>v.nome)}</select><button ${at({act:"addp"})}>+ Página</button></div>
+    <label class="sw"><input type="checkbox" ${at({f:"todas"})} ${todas?"checked":""}>Ver todas as páginas na prévia</label>
+  </fieldset>
+  <fieldset><legend>Página ${sel+1}</legend>
+    <label>Modelo<select ${at({f:"modelo"})}>${opts(MODELOS,p.modelo,v=>v.nome)}</select></label>
+    ${m.faixaCartao ? `<p class="hint">Neste modelo a faixa azul é de cada cartão.</p>` : `<label>Faixa azul<input type="text" ${at({f:"faixa"})} value="${esc(p.faixa)}"></label>`}
+  </fieldset>
+  ${p.cartoes.map((c,ci) => `<fieldset><legend>Cartão ${ci+1}</legend>
+    <label>Empreendimento<select ${at({f:"emp",c:ci})}>${opts(EMP,c.emp,v=>v.rot)}</select></label>
+    ${m.faixaCartao ? `<label>Faixa azul do cartão<input type="text" ${at({f:"cfaixa",c:ci})} value="${esc(c.faixa)}"></label>` : ""}
+    <label>Faixa verde, linha 1<input type="text" ${at({f:"n0",c:ci})} value="${esc(c.nome[0]||"")}"></label>
+    <label>Faixa verde, linha 2<input type="text" ${at({f:"n1",c:ci})} value="${esc(c.nome[1]||"")}"></label>
+    ${c.blocos.map((b,bi) => { const t = TIPOS[b.tipo]; return `<div class="blk ${b.ativo?"":"off"}">
+      <div class="row"><label class="sw"><input type="checkbox" ${at({f:"tog",c:ci,b:bi})} ${b.ativo?"checked":""}>${t.nome}${t.titulo?`<span class="tag">título fixo</span>`:""}</label>
+      <button ${at({act:"delb",c:ci,b:bi})} aria-label="Remover bloco">✕</button></div>
+      ${b.textos.map((x,j) => `<textarea rows="${Math.max(2,x.split("\n").length)}" ${at({f:"txt",c:ci,b:bi,j})}>${esc(x)}</textarea>`).join("")}</div>`; }).join("")}
+    <div class="row"><select>${opts(TIPOS,"texto",v=>v.nome)}</select><button ${at({act:"addb",c:ci})}>+ Bloco</button></div>
+  </fieldset>`).join("")}
+  <fieldset><legend>Dados (JSON)</legend>
+    <textarea id="json" rows="6"></textarea>
+    <div class="row"><button ${at({act:"apply"})}>Aplicar JSON</button><button ${at({act:"reset"})}>Restaurar exemplo</button></div>
+    <p class="hint">Uma linha de texto = um chip. As cores são aplicadas pela regra do tipo de bloco. O estado fica salvo neste navegador.</p>
+  </fieldset>`;
+  preview();
+}
+
+/* ===== EVENTOS ===== */
+const ed = document.getElementById("editor");
+const P = () => S.paginas[sel];
+ed.addEventListener("input", ev => {
+  const t = ev.target, d = t.dataset, v = t.value;
+  if (!d.f || t.tagName === "SELECT" || t.type === "checkbox") return;
+  const c = P().cartoes[+d.c];
+  if (d.f === "titulo") S.campanha.titulo = v;
+  else if (d.f === "faixa") P().faixa = v;
+  else if (d.f === "cfaixa") c.faixa = v;
+  else if (d.f === "n0" || d.f === "n1") c.nome[+d.f[1]] = v;
+  else if (d.f === "txt") c.blocos[+d.b].textos[+d.j] = v;
+  else return;
+  preview();
+});
+ed.addEventListener("change", ev => {
+  const t = ev.target, d = t.dataset, v = t.value;
+  if (!d.f) return;
+  if (d.f === "mes") { S.campanha.mes = v; preview(); }
+  else if (d.f === "todas") { todas = t.checked; preview(); }
+  else if (d.f === "tog") { P().cartoes[+d.c].blocos[+d.b].ativo = t.checked; t.closest(".blk").classList.toggle("off", !t.checked); preview(); }
+  else if (d.f === "emp") {
+    const c = P().cartoes[+d.c], e = EMP[v]; c.emp = v; c.nome = [...e.nome];
+    if (e.faixa) { c.faixa = e.faixa; if (!MODELOS[P().modelo].faixaCartao && P().modelo === "residencial") P().faixa = e.faixa; }
+    editor();
+  } else if (d.f === "modelo") {
+    const p = P(); p.modelo = v; const n = MODELOS[v].n;
+    while (p.cartoes.length > n) p.cartoes.pop();
+    while (p.cartoes.length < n) p.cartoes.push(cartao("", [bl("texto","")]));
+    editor();
+  }
+});
+ed.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-act]"); if (!t) return;
+  const d = t.dataset, a = d.act, i = +d.p, ps = S.paginas;
+  if (a === "sel") sel = i;
+  else if (a === "up" && i > 0) { [ps[i-1], ps[i]] = [ps[i], ps[i-1]]; if (sel === i) sel--; else if (sel === i-1) sel++; }
+  else if (a === "down" && i < ps.length-1) { [ps[i+1], ps[i]] = [ps[i], ps[i+1]]; if (sel === i) sel++; else if (sel === i+1) sel--; }
+  else if (a === "delp" && ps.length > 1) { ps.splice(i,1); sel = Math.min(sel, ps.length-1); }
+  else if (a === "addp") { const k = document.getElementById("novoModelo").value;
+    ps.push({ modelo:k, faixa:"Nova faixa", cartoes:Array.from({length:MODELOS[k].n}, () => cartao("", [bl("texto","")])) }); sel = ps.length-1; }
+  else if (a === "addb") { const k = t.parentElement.querySelector("select").value;
+    P().cartoes[+d.c].blocos.push({ tipo:k, ativo:true, textos: TIPOS[k].cols === 2 ? ["",""] : [""] }); }
+  else if (a === "delb") P().cartoes[+d.c].blocos.splice(+d.b, 1);
+  else if (a === "reset") { S = seed(); sel = 0; }
+  else if (a === "apply") { try { const j = JSON.parse(document.getElementById("json").value); if (!j.paginas) throw 0; S = j; sel = 0; } catch(e) { alert("JSON inválido."); return; } }
+  editor();
+});
+editor();
+</script>
+</body>
+</html>
