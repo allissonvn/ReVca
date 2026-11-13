@@ -1,0 +1,6 @@
+[
+  { "id": "residencial", "nome": "Residencial (1 cartão)", "minCartoes": 1, "maxCartoes": 1, "faixaPorCartao": false, "escala": 1, "alturaLogo": 86, "paddingCartao": 44, "espacoBlocos": 30, "celulaSolitaria": "esquerda" },
+  { "id": "duplo", "nome": "Dois cartões (faixa em cada)", "minCartoes": 2, "maxCartoes": 2, "faixaPorCartao": true, "escala": 0.92, "alturaLogo": 66, "paddingCartao": 26, "espacoBlocos": 16, "celulaSolitaria": "esquerda" },
+  { "id": "loteamentos", "nome": "Loteamentos (1 a 3 cartões)", "minCartoes": 1, "maxCartoes": 3, "faixaPorCartao": false, "escala": 0.8, "alturaLogo": 42, "paddingCartao": 16, "espacoBlocos": 10, "celulaSolitaria": "esquerda" },
+  { "id": "aviso", "nome": "Aviso / mensagem", "minCartoes": 1, "maxCartoes": 1, "faixaPorCartao": false, "escala": 1.15, "alturaLogo": 86, "paddingCartao": 44, "espacoBlocos": 30, "celulaSolitaria": "esquerda" }
+]

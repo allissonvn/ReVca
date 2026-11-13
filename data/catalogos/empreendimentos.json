@@ -1,0 +1,8 @@
+[
+  { "id": "uni-ville", "nome": ["Condições para o Uni Ville Residencial", "1ª etapa (31/12/2027)"], "faixa": "Linha: Uni Residencial", "logo": "uni-ville.png" },
+  { "id": "dona-olivia", "nome": ["Condições para Dona Olivia Universidade"], "faixa": "Dona Olivia Universidade", "logo": "dona-olivia.png" },
+  { "id": "baron-1", "nome": ["Condições para o Baron Connect I (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-connect.png" },
+  { "id": "baron-2", "nome": ["Condições para o Baron Connect II (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-connect.png" },
+  { "id": "baron-uchoa", "nome": ["Condições para o Baron Uchôa (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-uchoa.png" },
+  { "id": "kahakai", "nome": ["Condições para o Kahakai Prado"], "faixa": "VCA Praia", "logo": "kahakai.png" }
+]

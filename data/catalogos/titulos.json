@@ -1,0 +1,13 @@
+[
+  { "texto": "FINANCIAMENTO CEF", "cor": "preto" },
+  { "texto": "PARCELAMENTO FACILITA", "cor": "preto" },
+  { "texto": "CONDIÇÃO INVESTIDOR", "cor": "preto" },
+  { "texto": "PLANO INVESTIDOR", "cor": "preto" },
+  { "texto": "DOCUMENTAÇÃO:", "cor": "preto" },
+  { "texto": "OBSERVAÇÃO", "cor": "vermelho" },
+  { "texto": "PROMOÇÃO", "cor": "vermelho" },
+  { "texto": "PARA UNIDADES 2/4:", "cor": "vermelho" },
+  { "texto": "UNIDADES 2/4 (1º ANDAR)", "cor": "preto" },
+  { "texto": "UNIDADES 2/4 (TÉRREO)", "cor": "preto" },
+  { "texto": "UNIDADES 3/4 (TÉRREO e 1º ANDAR)", "cor": "preto" }
+]

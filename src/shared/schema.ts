@@ -1,0 +1,123 @@
+import { z } from "zod";
+
+// Chaves de domínio em português (ver AGENTS.md §4); tipos de código em inglês.
+
+export const MESES = [
+  "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO",
+] as const;
+
+export const MesSchema = z.enum(MESES);
+export type Mes = (typeof MESES)[number];
+
+export const TituloCorSchema = z.enum(["preto", "vermelho"]);
+export type TituloCor = z.infer<typeof TituloCorSchema>;
+
+export const LarguraSchema = z.union([z.literal(1), z.literal(2)]);
+export type Largura = z.infer<typeof LarguraSchema>;
+
+export const BlocoSchema = z.object({
+  id: z.string().min(1),
+  tipo: z.string().min(1),
+  ativo: z.boolean(),
+  largura: LarguraSchema,
+  // Título aceita markup de cor ([[azul]] / ((vermelho)))
+  titulo: z.string(),
+  tituloCor: TituloCorSchema,
+  // Uma linha = um chip; aceita markup de cor
+  texto: z.string(),
+});
+export type Bloco = z.infer<typeof BlocoSchema>;
+
+export const CartaoSchema = z.object({
+  id: z.string().min(1),
+  empreendimentoId: z.string().nullable(),
+  // Faixa azul do cartão (só nos modelos com faixaPorCartao)
+  faixa: z.string().optional(),
+  // Faixa verde: 1 ou 2 linhas
+  titulo: z.array(z.string()).min(1).max(2),
+  blocos: z.array(BlocoSchema),
+});
+export type Cartao = z.infer<typeof CartaoSchema>;
+
+export const PaginaSchema = z.object({
+  id: z.string().min(1),
+  modelo: z.string().min(1),
+  // Faixa azul da página (nos modelos com faixaPorCartao não é usada)
+  faixa: z.string().optional(),
+  cartoes: z.array(CartaoSchema),
+});
+export type Pagina = z.infer<typeof PaginaSchema>;
+
+export const CampanhaSchema = z.object({
+  versao: z.literal(1),
+  id: z.string().min(1),
+  titulo: z.string(),
+  mes: MesSchema,
+  rodape: z.string().optional(),
+  paginas: z.array(PaginaSchema),
+  // Sobe a cada gravação (controle de concorrência otimista)
+  revisao: z.number().int().positive(),
+  atualizadoEm: z.string(),
+});
+export type Campanha = z.infer<typeof CampanhaSchema>;
+
+// ---- Catálogos (JSON editado à mão pelo dono) ----
+
+export const ModeloSchema = z.object({
+  id: z.string().min(1),
+  nome: z.string(),
+  minCartoes: z.number().int().positive(),
+  maxCartoes: z.number().int().positive(),
+  faixaPorCartao: z.boolean(),
+  // Escala das fontes dos blocos (1 = tamanho original do PDF)
+  escala: z.number().positive(),
+  alturaLogo: z.number().positive(),
+  paddingCartao: z.number(),
+  espacoBlocos: z.number(),
+  // Onde fica um bloco de largura 1 que sobra sozinho na linha
+  celulaSolitaria: z.enum(["esquerda", "centro"]).default("esquerda"),
+});
+export type Modelo = z.infer<typeof ModeloSchema>;
+
+export const TipoBlocoSchema = z.object({
+  id: z.string().min(1),
+  nome: z.string(),
+  tituloPadrao: z.string(),
+  tituloCor: TituloCorSchema,
+  largura: LarguraSchema,
+});
+export type TipoBloco = z.infer<typeof TipoBlocoSchema>;
+
+export const TituloProntoSchema = z.object({
+  texto: z.string(),
+  cor: TituloCorSchema,
+});
+export type TituloPronto = z.infer<typeof TituloProntoSchema>;
+
+export const EmpreendimentoSchema = z.object({
+  id: z.string().min(1),
+  // Nome (faixa verde): 1 ou 2 linhas
+  nome: z.array(z.string()).min(1).max(2),
+  faixa: z.string(),
+  // Arquivo em data/logos/; null = marcador tracejado
+  logo: z.string().nullable(),
+});
+export type Empreendimento = z.infer<typeof EmpreendimentoSchema>;
+
+export type Catalogos = {
+  modelos: Modelo[];
+  tiposBloco: TipoBloco[];
+  titulos: TituloPronto[];
+  empreendimentos: Empreendimento[];
+};
+
+export function parseCampanha(data: unknown): Campanha {
+  return CampanhaSchema.parse(data);
+}
+
+/** Valida e devolve mensagem de erro amigável, ou null se ok. */
+export function erroCampanha(data: unknown): string | null {
+  const r = CampanhaSchema.safeParse(data);
+  return r.success ? null : r.error.message;
+}

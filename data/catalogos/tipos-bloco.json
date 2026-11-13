@@ -1,0 +1,11 @@
+[
+  { "id": "financiamento", "nome": "Financiamento CEF", "tituloPadrao": "FINANCIAMENTO CEF", "tituloCor": "preto", "largura": 2 },
+  { "id": "facilita", "nome": "Parcelamento Facilita", "tituloPadrao": "PARCELAMENTO FACILITA", "tituloCor": "preto", "largura": 2 },
+  { "id": "documentacao", "nome": "Documentação", "tituloPadrao": "", "tituloCor": "preto", "largura": 1 },
+  { "id": "observacao", "nome": "Observação", "tituloPadrao": "OBSERVAÇÃO", "tituloCor": "vermelho", "largura": 2 },
+  { "id": "prosoluto", "nome": "Pró-soluto", "tituloPadrao": "", "tituloCor": "preto", "largura": 2 },
+  { "id": "promocao", "nome": "Promoção", "tituloPadrao": "PROMOÇÃO", "tituloCor": "vermelho", "largura": 2 },
+  { "id": "investidor", "nome": "Condição investidor", "tituloPadrao": "CONDIÇÃO INVESTIDOR", "tituloCor": "preto", "largura": 2 },
+  { "id": "avista", "nome": "À vista / sem juros", "tituloPadrao": "", "tituloCor": "preto", "largura": 1 },
+  { "id": "texto", "nome": "Texto livre", "tituloPadrao": "", "tituloCor": "preto", "largura": 2 }
+]
