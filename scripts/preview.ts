@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderDocumento, artCss } from "../src/shared/render.js";
 import { CampanhaSchema, Catalogos, ModeloSchema, TipoBlocoSchema, TituloProntoSchema, EmpreendimentoSchema } from "../src/shared/schema.js";
-import { acharRaiz } from "./raiz.js";
+import { acharRaiz } from "../src/shared/raiz.js";
 
 const raiz = acharRaiz();
 const lerJson = (rel: string) => JSON.parse(readFileSync(join(raiz, rel), "utf8"));

@@ -1,4 +1,5 @@
-// Acha a raiz do projeto subindo até achar package.json (funciona no fonte e no bundle).
+// Acha a raiz do projeto subindo até achar package.json
+// (funciona no fonte e no bundle do esbuild).
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

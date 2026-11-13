@@ -4,7 +4,7 @@
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { Campanha, CampanhaSchema } from "../src/shared/schema.js";
-import { acharRaiz } from "./raiz.js";
+import { acharRaiz } from "../src/shared/raiz.js";
 
 const raiz = acharRaiz();
 const arquivo = join(raiz, "data", "campanhas", "exemplo.json");
