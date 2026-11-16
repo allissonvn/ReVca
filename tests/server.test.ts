@@ -43,10 +43,8 @@ async function req(metodo: string, caminho: string, corpo?: unknown): Promise<{ 
 async function fazerLogin(email: string = "admin@vca.com", senha: string = "admin123"): Promise<string> {
   const r = await req("POST", "/api/auth/login", { email, senha });
   if (r.status !== 200) throw new Error(`login falhou: ${r.status} ${r.texto}`);
-  // extrai token do corpo JSON (r.json vem de JSON.parse(r.texto))
   const body = r.json as { token?: string } | null;
   const token = body?.token;
-  console.log("DEBUG fazerLogin: status=", r.status, "token=", token?.substring(0, 20), "texto=", r.texto.substring(0, 200));
   if (!token) throw new Error("token não retornado pelo login: " + r.texto);
   tokenSessao = token;
   return token;

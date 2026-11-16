@@ -1,10 +1,16 @@
 // Banco de dados SQLite (AGENTS.md §2, v2).
 // Arquivo único em data/vca.db, sem servidor separado.
 // Tabelas: usuarios e sessoes.
-import Database from "better-sqlite3";
+// Usa better-sqlite3 carregado via createRequire porque é um módulo CJS
+// com binário nativo que precisa de __dirname (não funciona com import ESM).
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { acharRaiz } from "../shared/raiz.js";
+
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
+type DatabaseInstance = InstanceType<typeof Database>;
 
 export type Usuario = {
   id: string;
@@ -24,9 +30,9 @@ export type Sessao = {
 };
 
 // Cache de instâncias por caminho do banco (evita singleton compartilhado entre testes)
-const dbs = new Map<string, Database.Database>();
+const dbs = new Map<string, DatabaseInstance>();
 
-export function getDb(raizDados?: string): Database.Database {
+export function getDb(raizDados?: string): DatabaseInstance {
   const raiz = raizDados ?? join(acharRaiz(), "data");
   const chave = raiz;
   let db = dbs.get(chave);
