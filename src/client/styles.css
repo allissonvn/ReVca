@@ -11,7 +11,7 @@
   --ok: #1b7a2a;
   --alerta: #b36b00;
 }
-:root[data-theme="dark"] {
+:root[data-theme="escuro"] {
   --bg: #17181c;
   --panel: #222429;
   --tx: #e8e8ec;
@@ -162,7 +162,7 @@ button.icone { padding: 4px 8px; line-height: 1; }
   font-size: 12px;
   align-self: center;
 }
-:root[data-theme="dark"] .previa .aviso-estouro { background: #4a3a10; color: #ffd58a; border-color: #8a6b1a; }
+:root[data-theme="escuro"] .previa .aviso-estouro { background: #4a3a10; color: #ffd58a; border-color: #8a6b1a; }
 .moldura { width: 100%; display: flex; justify-content: center; }
 .escala { transform-origin: top left; }
 

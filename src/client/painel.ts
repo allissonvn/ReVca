@@ -352,7 +352,7 @@ async function aoClicar(ev: MouseEvent): Promise<void> {
   const ps = c.paginas;
   const i = Number(d.pag ?? -1);
   switch (d.act) {
-    case "pag-sel": estado.pagSelecionada = i; reconstruir(); break;
+    case "pag-sel": estado.pagSelecionada = i; reconstruir(); notificarConteudo(); break;
     case "pag-up": if (i > 0) { const a = ps[i - 1] as Pagina, b = ps[i] as Pagina; ps[i - 1] = b; ps[i] = a; if (estado.pagSelecionada === i) estado.pagSelecionada = i - 1; reconstruir(); marcarSujo(); } break;
     case "pag-down": if (i >= 0 && i < ps.length - 1) { const a = ps[i] as Pagina, b = ps[i + 1] as Pagina; ps[i] = b; ps[i + 1] = a; if (estado.pagSelecionada === i) estado.pagSelecionada = i + 1; reconstruir(); marcarSujo(); } break;
     case "pag-dup": if (i >= 0 && ps[i]) { ps.splice(i + 1, 0, copiaPagina(ps[i] as Pagina)); estado.pagSelecionada = i + 1; reconstruir(); marcarSujo(); } break;
