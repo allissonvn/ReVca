@@ -3,9 +3,9 @@ import type { JSX } from "react";
 // render.ts), busca e ações (abrir, duplicar, excluir).
 import { useEffect, useMemo, useState } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
-import { Campanha } from "../../shared/schema.js";
+import { Campanha, Catalogos } from "../../shared/schema.js";
 import { CampanhaResumo, listarCampanhas, lerCampanha, lerCatalogos, criarCampanha, excluirCampanha } from "../api.js";
-import { estado, alternarTema, useEstado, notificar } from "../store.js";
+import { estado, alternarTema, useEstado } from "../store.js";
 
 const LARGURA_MINI = 220;
 
@@ -14,6 +14,7 @@ type Item = { resumo: CampanhaResumo; dados: Campanha };
 export function Home(): JSX.Element {
   useEstado(); // re-render quando o tema muda
   const [itens, setItens] = useState<Item[] | null>(null);
+  const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
 
@@ -24,8 +25,8 @@ export function Home(): JSX.Element {
     document.head.appendChild(style);
     void (async () => {
       try {
-        const resumos = await listarCampanhas();
-        await lerCatalogos();
+        const [resumos, catalogos] = await Promise.all([listarCampanhas(), lerCatalogos()]);
+        setCatalogos(catalogos);
         // poucas campanhas, servidor local: ler tudo de uma vez é ok
         const lidos = await Promise.all(resumos.map(async (r) => ({ resumo: r, dados: await lerCampanha(r.id) })));
         lidos.sort((a, b) => b.resumo.atualizadoEm.localeCompare(a.resumo.atualizadoEm));
@@ -80,7 +81,7 @@ export function Home(): JSX.Element {
         )}
         <div className="grade">
           {filtrados.map(({ resumo: r, dados }) => (
-            <CartaoCampanha key={r.id} resumo={r} dados={dados} />
+            <CartaoCampanha key={r.id} resumo={r} dados={dados} catalogos={catalogos} />
           ))}
         </div>
       </main>
@@ -88,9 +89,7 @@ export function Home(): JSX.Element {
   );
 }
 
-function CartaoCampanha({ resumo: r, dados }: { resumo: CampanhaResumo; dados: Campanha }): JSX.Element {
-  const [catalogo, setCatalogo] = useState<Awaited<ReturnType<typeof lerCatalogos>> | null>(null);
-  useEffect(() => { void lerCatalogos().then(setCatalogo); }, []);
+function CartaoCampanha({ resumo: r, dados, catalogos }: { resumo: CampanhaResumo; dados: Campanha; catalogos: Catalogos | null }): JSX.Element {
   const data = new Date(r.atualizadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
   const escala = LARGURA_MINI / 924;
   const primeira = dados.paginas[0];
@@ -105,21 +104,18 @@ function CartaoCampanha({ resumo: r, dados }: { resumo: CampanhaResumo; dados: C
   async function excluir(): Promise<void> {
     if (!window.confirm("Mover esta campanha para a lixeira?")) return;
     await excluirCampanha(r.id);
-    setCatalogo(null);
-    notificar();
-    // remove da grade sem recarregar
     window.location.reload();
   }
 
   return (
     <article className="cam-card" data-id={r.id} onClick={() => { window.location.href = `/?campanha=${encodeURIComponent(r.id)}`; }}>
       <div className="cam-mini">
-        {primeira && catalogo ? (
+        {primeira && catalogos ? (
           <div
             className="cam-mini-escala"
             style={{ transform: `scale(${escala})`, width: LARGURA_MINI, height: Math.round(1308 * escala) }}
             // render.ts escapa todo texto do usuário; o HTML é seguro por construção
-            dangerouslySetInnerHTML={{ __html: renderCampanha({ ...dados, paginas: [primeira] }, catalogo) }}
+            dangerouslySetInnerHTML={{ __html: renderCampanha({ ...dados, paginas: [primeira] }, catalogos) }}
           />
         ) : (
           <div className="cam-mini cam-mini-vazia">sem prévia</div>
