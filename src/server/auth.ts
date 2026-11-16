@@ -2,7 +2,7 @@
 // Sessão via token em Map em memória + cookie HTTP-only.
 // Papéis: editor (cria/edita/exclui campanhas) e leitor (apenas visualiza).
 import { randomBytes } from "node:crypto";
-import { compare, hash } from "bcrypt";
+import { compareSync, genSaltSync, hashSync } from "bcryptjs";
 import { z } from "zod";
 import { getDb, Usuario } from "./db.js";
 import {
@@ -47,7 +47,7 @@ export function criarAutenticacao(): Autenticacao {
       throw err;
     }
 
-    const senhaHash = hashSync(dados.senha);
+    const senhaHash = hashSenha(dados.senha);
     const id = gerarId();
     const agora = new Date().toISOString();
 
@@ -84,7 +84,7 @@ export function criarAutenticacao(): Autenticacao {
       throw err;
     }
 
-    const senhaValida = compareSync(dados.senha, linha.senha_hash);
+    const senhaValida = compararSenha(dados.senha, linha.senha_hash);
     if (!senhaValida) {
       const err: any = new Error("email ou senha inválidos");
       err.status = 401;
@@ -154,17 +154,11 @@ function gerarToken(): string {
 
 // ---- helpers síncronos de bcrypt ----
 
-function hashSync(senha: string): string {
-  const salt = bcryptGenSaltSync(10);
-  return bcryptHashSync(senha, salt);
+function hashSenha(senha: string): string {
+  const salt = genSaltSync(10);
+  return hashSync(senha, salt);
 }
 
-function compareSync(senha: string, hash: string): boolean {
-  return bcryptCompareSync(senha, hash);
+function compararSenha(senha: string, hash: string): boolean {
+  return compareSync(senha, hash);
 }
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const bcrypt = require("bcrypt");
-const bcryptGenSaltSync = (rounds: number) => bcrypt.genSaltSync(rounds);
-const bcryptHashSync = (senha: string, salt: string) => bcrypt.hashSync(senha, salt);
-const bcryptCompareSync = (senha: string, hash: string) => bcrypt.compareSync(senha, hash);
