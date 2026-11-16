@@ -109,7 +109,7 @@ function CartaoCampanha({ resumo: r, dados, catalogos }: { resumo: CampanhaResum
 
   return (
     <article className="cam-card" data-id={r.id} onClick={() => { window.location.href = `/?campanha=${encodeURIComponent(r.id)}`; }}>
-      <div className="cam-mini">
+      <div className="cam-mini" style={{ '--cam-mini-w': LARGURA_MINI, '--cam-mini-h': Math.round(1308 * escala) }}>
         {primeira && catalogos ? (
           <div
             className="cam-mini-escala"

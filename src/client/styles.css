@@ -213,7 +213,13 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
   transition: transform .12s, box-shadow .12s;
 }
 .cam-card:hover { transform: translateY(-3px); }
-.cam-mini { background: #fff; overflow: hidden; border-bottom: 1px solid var(--borda); }
+/* Miniatura da home: container com tamanho JÁ ESCALADO + flex para centrar
+   a arte transformada (igual ao canvas do editor, mas inline) */
+.cam-mini {
+  background: #fff; overflow: hidden; border-bottom: 1px solid var(--borda);
+  display: flex; align-items: center; justify-content: center;
+  width: var(--cam-mini-w); height: var(--cam-mini-h);
+}
 .cam-mini-vazia { padding: 30px; color: var(--texto-fraco); }
 .cam-mini-escala { display: block; transform-origin: top left; }
 .cam-info { padding: 10px 12px 0; display: flex; flex-direction: column; gap: 4px; }
