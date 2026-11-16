@@ -9,12 +9,14 @@ import { Campanha, CampanhaSchema, MESES } from "../shared/schema.js";
 import { renderDocumento } from "../shared/render.js";
 import { criarStorage, Storage, IdInvalidoError, NaoEncontradoError, ConflitoRevisaoError } from "./storage.js";
 import { lerCatalogos } from "./catalogos.js";
+import { criarExportador, Exportador, nomeArquivo } from "./export.js";
 import { acharRaiz } from "../shared/raiz.js";
 
 export type OpcoesServidor = {
   raizDados?: string;   // onde ficam campanhas/catálogos/logos (padrão: <projeto>/data)
   raizProjeto?: string; // para servir dist/client (padrão: raiz do projeto)
   storage?: Storage;    // injetável (testes)
+  exportador?: Exportador; // injetável (testes)
 };
 
 export function criarApp(opcoes: OpcoesServidor = {}): Express {
@@ -24,6 +26,9 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
 
   const app = express();
   app.use(express.json({ limit: "10mb" }));
+  // guardado para o encerramento fechar o Chromium (AGENTS.md §8)
+  const exportador = opcoes.exportador ?? criarExportador({ urlBase: () => (app.locals.urlBase as string | undefined) ?? "http://127.0.0.1:8080" });
+  app.locals.exportador = exportador;
 
   const lerOuNada = (req: Request, res: Response): Campanha | null => {
     try {
@@ -107,6 +112,43 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     }
   });
 
+  // ---- Exportação (AGENTS.md §8): formato=pdf|png, pagina=1-based ----
+  app.post("/api/campanhas/:id/exportar", async (req, res) => {
+    const c = lerOuNada(req, res);
+    if (!c) return;
+    const formato = req.query.formato === "png" ? "png" : "pdf";
+    const paginaStr = typeof req.query.pagina === "string" ? Number(req.query.pagina) : undefined;
+    try {
+      const catalogos = lerCatalogos(raizDados);
+      const nome = nomeArquivo(c, formato);
+      if (formato === "pdf") {
+        const pdf = await exportador.exportarPdf(c, catalogos);
+        res
+          .status(200)
+          .type("pdf")
+          .set("content-disposition", `attachment; filename="${nome}"`)
+          .send(pdf);
+      } else {
+        const pngs = await exportador.exportarPng(c, catalogos, paginaStr);
+        if (pngs.length === 1) {
+          const nomeUnico = nome.replace(/\.png$/, `-pag${paginaStr}.png`);
+          res
+            .status(200)
+            .type("png")
+            .set("content-disposition", `attachment; filename="${nomeUnico}"`)
+            .send(pngs[0]);
+        } else {
+          res
+            .status(200)
+            .type("json")
+            .send({ aviso: "várias páginas: use ?pagina=n para baixar PNGs individuais" });
+        }
+      }
+    } catch (e) {
+      tratarErro(e, res);
+    }
+  });
+
   // ---- Estáticos ----
   app.use("/logos", express.static(join(raizDados, "logos")));
   const clienteDir = join(raiz, "dist", "client");
@@ -178,7 +220,15 @@ if (process.argv[1] && import.meta.url === new URL(`file:///${process.argv[1].re
   const host = process.env.HOST ?? "127.0.0.1";
   const port = Number(process.env.PORT ?? 8080);
   const app = criarApp({ raizDados, raizProjeto: raiz });
-  app.listen(port, host, () => {
+  const server = app.listen(port, host, () => {
     console.log(`Editor VCA em http://${host}:${port}`);
+    app.locals.urlBase = `http://${host}:${port}`;
   });
+  // encerra o Chromium junto com o servidor
+  const encerrar = () => {
+    void (app.locals.exportador as Exportador).fechar().then(() => server.close());
+    process.exit(0);
+  };
+  process.on("SIGINT", encerrar);
+  process.on("SIGTERM", encerrar);
 }

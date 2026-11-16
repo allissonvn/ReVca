@@ -63,6 +63,14 @@ export function renderPainel(): void {
       <button data-act="tema" title="Alternar tema do painel (a arte é sempre clara)">${estado.tema === "escuro" ? "☀ Tema claro" : "🌙 Tema escuro"}</button>
     </div>
   </fieldset>
+  <fieldset><legend hidden>Exportar</legend>
+    <h2>Exportar</h2>
+    <div class="linha">
+      <button data-act="exportar-pdf" title="Gera o PDF com todas as páginas">⬇ PDF</button>
+      <button data-act="exportar-png" title="Gera PNG desta página (prévia: ${estado.verTodas ? "todas" : "página " + (estado.pagSelecionada + 1)})">⬇ PNG desta página</button>
+    </div>
+    <p class="dica" id="export-status"></p>
+  </fieldset>
   <fieldset><legend hidden>Páginas</legend>
     <h2>Páginas (${campanha.paginas.length})</h2>
     <div class="pag-lista">${campanha.paginas.map((p, i) => listaPagina(p, i, campanha.paginas.length)).join("")}</div>
@@ -410,6 +418,34 @@ async function aoClicar(ev: MouseEvent): Promise<void> {
       notificarConteudo();
       break;
     }
+    case "exportar-pdf": await exportar("pdf"); break;
+    case "exportar-png": await exportar("png"); break;
+  }
+}
+
+/** Baixa o arquivo gerado por POST /api/campanhas/:id/exportar. */
+async function exportar(formato: "pdf" | "png"): Promise<void> {
+  const c = estado.campanha;
+  if (!c) return;
+  await salvarAgora(); // exporta o que está na tela
+  const status = raiz.querySelector("#export-status");
+  const def = (s: string) => { if (status) status.textContent = s; };
+  def("Gerando…");
+  try {
+    let url = `/api/campanhas/${encodeURIComponent(c.id)}/exportar?formato=${formato}`;
+    if (formato === "png" && !estado.verTodas) url += `&pagina=${estado.pagSelecionada + 1}`;
+    const resp = await fetch(url, { method: "POST" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const disp = resp.headers.get("content-disposition") ?? "";
+    a.download = /filename="([^"]+)"/.exec(disp)?.[1] ?? `${c.titulo}.${formato}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    def("✓ Arquivo gerado");
+  } catch (e) {
+    def(`✗ Erro ao exportar: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 

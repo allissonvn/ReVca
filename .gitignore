@@ -3,4 +3,5 @@ dist/
 data/historico/
 data/campanhas/
 data/lixeira/
+temp/
 *.log
