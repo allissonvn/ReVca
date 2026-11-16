@@ -40,3 +40,15 @@
 - iniciar.bat/iniciar.sh: instalam dependências só se node_modules faltar, constroem só se dist/server/index.js faltar, abrem o navegador e sobem o servidor. O usuário final não usa terminal.
 - No .bat, npm é invocado com "call" (para o errorlevel voltar ao script); a porta é fixa em 8080, igual ao link aberto no navegador (HOST/PORT por variável de ambiente continuam disponíveis).
 - Teste de clone novo: com dist/ apagado, iniciar.bat reconstruiu e serviu o cliente (/, /api/campanhas 200).
+
+## Update v1.1 (cores Canva, home com miniaturas, exportação com opções)
+- Markup ganhou cor livre: `[[#rrggbb]]` abre, `[[/]]` fecha (só aceita # + 6 hex — nada de HTML injetado); `[[azul]]` e `((vermelho))` continuam válidos. `montarMarcado` prefere o token nomeado quando a cor é a canônica.
+- Edição "estilo Canva": o campo mostra o TEXTO PURO (sem marcadores); as cores vivem em faixas na memória (`cores.ts`, WeakMap por elemento) e viram markup no estado a cada tecla (prévia e autosave continuam markup). Faixas nunca cruzam quebra de linha; digitação dentro de texto colorido estende a cor (`ajustarRanges` com diff por prefixo/sufixo comum).
+- Sem seleção, a paleta pinta o campo todo (comportamento do Canva); com seleção, pinta só o trecho. "Sem cor" tira as cores do trecho/campo.
+- A paleta tem amostras fixas + `<input type="color">` (RGB do sistema). Hexes canônicos viram token nomeado (#1447ff→azul, #ff3b3b→vermelho).
+- Em páginas quase vazias o PDF rasterizado pode ficar MAIOR que o vetorial; a comprimida vale principalmente para conteúdo rico (no seed real: 1.050 KB → 275 KB).
+- JPEG do Puppeteer descartado: o encoder do Chromium duplica o conteúdo colorido nessa arte (marca d'água absoluta saindo da página); PNG sai limpo em qualquer dsf. Raster comprimido = PNG 1× (924×1308).
+- Nova dependência: `pdf-lib` — monta o PDF comprimido a partir das páginas rasterizadas (justificativa: Puppeteer não junta imagens em PDF; sem ela seria preciso escrever PDF à mão).
+- Home nova: grade de cartões com miniatura real da 1ª página (mesmo `render.ts`), busca por título/mês, badge de mês, ações abrir/duplicar/excluir. Cliente lê todas as campanhas de uma vez (poucas, servidor local).
+- Exportação detalhada: modal com formato (PDF/PNG) × páginas (todas/só a atual) × qualidade (alta/comprimida). PNG sempre um arquivo por página (o cliente baixa em série quando "todas"). PDF "só a atual" usa `pageRanges`; comprimida rasteriza com pdf-lib.
+- `#paleta-cor` e `#modal-export` precisam de `[hidden] { display: none }` explícito (o `display: flex` da classe sobrepõe o estilo padrão do atributo hidden).

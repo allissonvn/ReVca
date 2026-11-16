@@ -119,6 +119,52 @@ button.icone { padding: 4px 8px; line-height: 1; }
 .btn-vermelho { color: #ff3b3b; font-weight: 700; }
 .btn-sem { color: var(--mut); }
 
+/* ---- paleta de cores (estilo Canva) ---- */
+#paleta-cor[hidden] { display: none; }
+#paleta-cor {
+  position: absolute;
+  z-index: 50;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 240px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+#paleta-cor .amostra { width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line); padding: 0; }
+#paleta-cor .paleta-rgb { flex-direction: row; align-items: center; gap: 4px; font-size: 11px; }
+#paleta-cor input[type="color"] { width: 30px; height: 24px; padding: 1px; border: 1px solid var(--line); border-radius: 5px; background: none; }
+
+/* ---- modal de exportação ---- */
+#modal-export {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#modal-export[hidden] { display: none; }
+.modal-caixa {
+  background: var(--panel);
+  color: var(--tx);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  width: min(420px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal-caixa h2 { font-size: 14px; }
+
 /* ---- barra de status ---- */
 .status {
   position: sticky;
@@ -169,11 +215,47 @@ button.icone { padding: 4px 8px; line-height: 1; }
 /* ---- seletor de tema / ações ---- */
 .acoes-fim { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ---- home (lista de campanhas) ---- */
-.home { max-width: 760px; margin: 40px auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-.home h1 { font-size: 18px; }
-.cam-lista { display: flex; flex-direction: column; gap: 6px; }
-.cam-item { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-.cam-item .info { flex: 1; cursor: pointer; }
-.cam-item .info b { display: block; }
-.cam-item .info small { color: var(--mut); }
+/* ---- home (grade de campanhas) ---- */
+.home { max-width: 1200px; margin: 24px auto; padding: 0 14px; display: flex; flex-direction: column; gap: 14px; }
+.home-topo { display: flex; flex-direction: column; gap: 10px; }
+.home-topo h1 { font-size: 20px; }
+.home-topo .linha { justify-content: space-between; }
+.home-topo #busca { max-width: 320px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.cam-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.cam-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.cam-card[hidden] { display: none; }
+.mini {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  align-self: center;
+}
+.mini-escala { transform-origin: top left; }
+.mini-vazia { display: flex; align-items: center; justify-content: center; height: 100px; color: var(--mut); font-size: 12px; }
+.cam-info { display: flex; flex-direction: column; gap: 4px; }
+.cam-linha1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.cam-linha1 small { color: var(--mut); font-size: 11px; }
+.badge-mes {
+  background: #1447ff;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.cam-titulo { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cam-acoes { display: flex; gap: 6px; }
+.cam-acoes button { flex: 1; font-size: 11px; padding: 4px 6px; }

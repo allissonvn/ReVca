@@ -12,14 +12,14 @@ Aplicativo **local** para montar e editar o PDF mensal "Parcelamento Matriz" (co
 
 ## O que dá para fazer
 
-- **Campanhas**: criar, duplicar para outro mês, excluir (vai para a lixeira).
+- **Campanhas**: grade com miniatura da 1ª página, busca por título/mês; criar, duplicar para outro mês, excluir (vai para a lixeira).
 - **Páginas**: adicionar escolhendo o modelo (residencial, duplo, loteamentos, aviso), subir/descer, duplicar, excluir; "ver todas" na prévia.
 - **Cartões**: escolher empreendimento do catálogo (preenche faixas e logo), editar faixa azul e faixa verde.
 - **Blocos**: ligar/desligar, título pronto ou livre, largura (1 ou 2 colunas), ordem; cada linha do texto vira um chip.
-- **Cores por seleção**: selecione um trecho no campo e clique **Azul** ou **Vermelho** (funciona no texto e nos títulos).
+- **Cores por seleção (estilo Canva)**: selecione um trecho no campo e clique **🎨 Cor** — escolha uma amostra ou uma cor RGB personalizada; **Sem cor** tira as cores do trecho. O campo mostra o texto limpo, sem códigos (funciona no texto e nos títulos).
 - **Salvamento automático**: ~800 ms após parar de digitar; indicador "salvo / salvando / erro / conflito".
 - **Aviso de estouro**: se o conteúdo passar da altura da página, um aviso aparece na prévia.
-- **Exportar**: botões **⬇ PDF** (todas as páginas) e **⬇ PNG desta página** (a página selecionada da prévia; em "ver todas", consulte o PDF).
+- **Exportar**: botão **⬇ PDF** (todas as páginas, qualidade alta) ou **⚙ Opções de exportação…** — escolha formato (PDF/PNG), páginas (todas ou só a atual) e qualidade (**Alta** — vetorial/2×, ou **Comprimida** — rasterizada, arquivo menor, boa para WhatsApp).
 
 ## Dados
 

@@ -87,4 +87,29 @@ describe("exportação", () => {
     const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=png&pagina=9`, { method: "POST" });
     expect(r.status).toBe(404);
   });
+
+  it("PDF comprimido: 4 páginas rasterizadas, PDF válido", { timeout: 90000 }, async () => {
+    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=pdf&qualidade=comprimida`, { method: "POST" });
+    expect(r.status).toBe(200);
+    const pdf = Buffer.from(await r.arrayBuffer());
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(contarPaginasPdf(pdf)).toBe(4);
+  });
+
+  it("PNG comprimido: mesma página em resolução 1× (menor)", { timeout: 90000 }, async () => {
+    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=png&qualidade=comprimida&pagina=1`, { method: "POST" });
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toContain("png");
+    const png = Buffer.from(await r.arrayBuffer());
+    expect([...png.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    // 1× : largura 924 (IHDR) em vez de 1848 da alta
+    expect(png.readUInt32BE(16)).toBe(924);
+  });
+
+  it("PDF de uma página só (vetorial)", { timeout: 90000 }, async () => {
+    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=pdf&pagina=3`, { method: "POST" });
+    expect(r.status).toBe(200);
+    const pdf = Buffer.from(await r.arrayBuffer());
+    expect(contarPaginasPdf(pdf)).toBe(1);
+  });
 });

@@ -112,36 +112,43 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     }
   });
 
-  // ---- Exportação (AGENTS.md §8): formato=pdf|png, pagina=1-based ----
+  // ---- Exportação (AGENTS.md §8): formato=pdf|png, qualidade=alta|comprimida,
+  // pagina=1-based (uma página só) ----
   app.post("/api/campanhas/:id/exportar", async (req, res) => {
     const c = lerOuNada(req, res);
     if (!c) return;
     const formato = req.query.formato === "png" ? "png" : "pdf";
+    const comprimida = req.query.qualidade === "comprimida";
     const paginaStr = typeof req.query.pagina === "string" ? Number(req.query.pagina) : undefined;
     try {
       const catalogos = lerCatalogos(raizDados);
-      const nome = nomeArquivo(c, formato);
+      const opcoes = { comprimida, ...(paginaStr !== undefined ? { pagina: paginaStr } : {}) };
       if (formato === "pdf") {
-        const pdf = await exportador.exportarPdf(c, catalogos);
+        const pdf = await exportador.exportarPdf(c, catalogos, opcoes);
         res
           .status(200)
           .type("pdf")
-          .set("content-disposition", `attachment; filename="${nome}"`)
+          .set("content-disposition", `attachment; filename="${nomeArquivo(c, "pdf")}"`)
           .send(pdf);
       } else {
-        const pngs = await exportador.exportarPng(c, catalogos, paginaStr);
+        const pngs = await exportador.exportarPng(c, catalogos, opcoes);
         if (pngs.length === 1) {
-          const nomeUnico = nome.replace(/\.png$/, `-pag${paginaStr}.png`);
-          res
-            .status(200)
-            .type("png")
-            .set("content-disposition", `attachment; filename="${nomeUnico}"`)
-            .send(pngs[0]);
+          const primeiro = pngs[0];
+          if (primeiro) {
+            const base = nomeArquivo(c, "png");
+            const nomeUnico =
+              paginaStr !== undefined ? base.replace(/(\.[a-z0-9]+)$/, `-pag${paginaStr}$1`) : base;
+            res
+              .status(200)
+              .type("png")
+              .set("content-disposition", `attachment; filename="${nomeUnico}"`)
+              .send(primeiro);
+          }
         } else {
           res
             .status(200)
             .type("json")
-            .send({ aviso: "várias páginas: use ?pagina=n para baixar PNGs individuais" });
+            .send({ aviso: "várias páginas: use ?pagina=n para baixar imagens individuais" });
         }
       }
     } catch (e) {
