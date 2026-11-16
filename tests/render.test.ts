@@ -175,6 +175,12 @@ describe("renderCampanha", () => {
     expect(html).toContain("/logos/baron-connect.png");
   });
 
+  it("logo e placeholder ocupam a MESMA caixa padrão (sem distorção)", () => {
+    // altura do modelo × 1,5 de largura, com object-fit:contain
+    expect(artCss()).toContain(".logo-area img{height:100%;width:calc(var(--logo) * 1.5);object-fit:contain}");
+    expect(artCss()).toContain("logo-ph");
+  });
+
   it("empreendimento sem logo mostra marcador tracejado", () => {
     const c = JSON.parse(JSON.stringify(campanhaSeed));
     const catalogos = carregarCatalogos();

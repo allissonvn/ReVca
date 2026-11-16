@@ -54,6 +54,7 @@
 - Miniaturas reais na lista de páginas: HTML do `renderCampanha` memoizado por `JSON.stringify(pag)` — o React só troca o DOM da miniatura quando o conteúdo da página muda (digitar num campo não reconstrui as outras).
 - Reordenação por arrastar-e-soltar (HTML5 DnD, sem dependência): páginas arrastam pelo item inteiro; blocos só pela alça ⠿ (item todo draggable rouba a seleção de texto dos campos). Setas ▲▼ mantidas para teclado/acessibilidade. Ao mover páginas, a seleção acompanha a página movida (pelo `id`).
 - O canvas mede o estouro e reporta o mapa (id → altura) ao Editor via `aoEstouro`; o badge ⚠ da lista passa a mostrar também os px. A comparação por assinatura evita laço de re-render (só notifica quando o mapa muda).
+- Tamanho padrão para logos de empreendimento: caixa fixa de altura `--logo` (por modelo) × largura 1,5× com `object-fit: contain` — logos com proporções muito diferentes (0,70 a 1,40) passam a ocupar o mesmo espaço, sem distorção nem estouro. O placeholder tracejado usa a mesma caixa (o cartão não "pula" ao carregar/trocar a logo).
 
 ## Update v1.1 (cores Canva, home com miniaturas, exportação com opções)
 - Markup ganhou cor livre: `[[#rrggbb]]` abre, `[[/]]` fecha (só aceita # + 6 hex — nada de HTML injetado); `[[azul]]` e `((vermelho))` continuam válidos. `montarMarcado` prefere o token nomeado quando a cor é a canônica.

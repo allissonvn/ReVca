@@ -49,8 +49,11 @@ export function artCss(): string {
 .pilha{position:relative;z-index:1;display:flex;flex-direction:column;gap:${L.GAP_LINHA_BLOCOS}px}
 .cartao{min-width:0}
 .logo-area{display:flex;justify-content:center;align-items:center;margin:10px auto;height:var(--logo)}
-.logo-area img{height:100%}
-.logo-ph{border:2px dashed #9aa4d8;color:#6a74b8;font-weight:700;font-size:13px;padding:6px 14px;border-radius:6px}
+/* Caixa padrão: toda logo ocupa o MESMO espaço (altura do modelo × 1,5 de
+ * largura), sem distorção — logos com proporções diferentes (0,7 a 1,4 nos
+ * catálogos atuais) ficam uniformes entre cartões */
+.logo-area img{height:100%;width:calc(var(--logo) * 1.5);object-fit:contain}
+.logo-ph{box-sizing:border-box;border:2px dashed #9aa4d8;color:#6a74b8;font-weight:700;font-size:13px;padding:6px 14px;border-radius:6px;height:var(--logo);width:calc(var(--logo) * 1.5);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .caixa{margin:0 auto;width:${L.CARTAO_LARGURA}px}
 .faixa-verde{background:${L.CORES.verde};border:${L.FAIXA_VERDE.borda}px solid ${L.CORES.bordaFaixaVerde};color:#fff;text-align:center;font-size:calc(${L.FAIXA_VERDE.fonte}px * var(--esc));line-height:1.3;font-weight:700;padding:${L.FAIXA_VERDE.padding}px 0;text-transform:uppercase}
 .corpo{background:${L.CORES.cartao};border:${L.CARTAO_CORPO.borda}px solid ${L.CORES.bordaCartao};border-top:0;border-radius:0 0 ${L.CARTAO_CORPO.raio}px ${L.CARTAO_CORPO.raio}px;padding:var(--pad) ${L.CARTAO_CORPO.paddingLateral}px;display:flex;flex-direction:column;align-items:center;gap:var(--gap);min-height:${L.CARTAO_CORPO.minAltura}px}
