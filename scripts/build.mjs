@@ -18,8 +18,8 @@ const passo = async (nome, acao) => {
 };
 
 // Servidor: bundle node (puppeteer fica externo por causa de binários dinâmicos).
-// Todas as dependências do node_modules ficam como external para evitar
-// problemas com require() em dependências CJS dentro do bundle ESM.
+// O banner com createRequire é necessário porque dependências CJS (express, better-sqlite3)
+// precisam de require de verdade dentro do bundle ESM.
 import { readdirSync } from "node:fs";
 const nodeModules = readdirSync(join(raiz, "node_modules"));
 
@@ -31,6 +31,7 @@ await passo("servidor", () => build({
   format: "esm",
   sourcemap: true,
   external: ["puppeteer", "better-sqlite3", ...nodeModules],
+  banner: { js: `import { createRequire } from "node:module"; const require = createRequire(import.meta.url);` },
   logLevel: "warning",
 }));
 

@@ -2,9 +2,12 @@ import { describe, it, expect, afterAll, beforeEach } from "vitest";
 import { mkdtempSync, readFileSync, readdirSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createRequire } from "node:module";
 import { criarApp } from "../src/server/index.js";
 import { criarStorage } from "../src/server/storage.js";
 import type { Server } from "node:http";
+
+const require = createRequire(import.meta.url);
 
 // Servidor real em porta efêmera + diretório de dados temporário
 const raizDados = mkdtempSync(join(tmpdir(), "vca-test-"));

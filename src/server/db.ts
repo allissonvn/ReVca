@@ -1,13 +1,15 @@
 // Banco de dados SQLite (AGENTS.md §2, v2).
 // Arquivo único em data/vca.db, sem servidor separado.
 // Tabelas: usuarios e sessoes.
-// Usa better-sqlite3 carregado via import dinâmico porque é um módulo CJS
-// com binário nativo que precisa de __dirname (não funciona com import ESM estático).
+// Usa better-sqlite3 carregado via createRequire do banner do esbuild
+// porque é um módulo CJS com binário nativo que precisa de __dirname (não funciona com import ESM estático).
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { acharRaiz } from "../shared/raiz.js";
 
-const Database = (await import("better-sqlite3")).default;
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
 
 export type Usuario = {
   id: string;
@@ -66,7 +68,7 @@ export function getDb(raizDados?: string): DbInstance {
       CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
     `);
     db = dbInstance;
-    dbs.set(chave, db);
+    dbs.set(chave, db as DbInstance);
   }
   return db!;
 }
@@ -82,7 +84,7 @@ export function fecharDb(raizDados?: string): void {
 
 export function fecharTodosOsDbs(): void {
   for (const [, db] of dbs) {
-    db.close();
+    db?.close();
   }
   dbs.clear();
 }
