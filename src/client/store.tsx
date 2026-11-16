@@ -1,4 +1,8 @@
-// Estado do editor: a campanha aberta + catálogos + controle de salvamento.
+import type { JSX } from "react";
+// Estado global do editor, consumido pelo React (AGENTS.md §7).
+// O estado é mutável e único (como antes); o React assina por useSyncExternalStore
+// com um contador de versão: cada notificar() força re-render de quem usa useEstado().
+import { useSyncExternalStore } from "react";
 import { Campanha, Catalogos } from "../shared/schema.js";
 import { gravarCampanha } from "./api.js";
 
@@ -26,6 +30,28 @@ export const estado: Estado = {
   tema: (localStorage.getItem("vca-tema") as "claro" | "escuro" | null) ?? "claro",
 };
 
+// ---- assinatura do React: versão numérica como snapshot ----
+let versao = 0;
+const ouvintes = new Set<() => void>();
+
+function inscrever(fn: () => void): () => void {
+  ouvintes.add(fn);
+  return () => ouvintes.delete(fn);
+}
+
+/** Gancho: re-renderiza o componente quando o estado muda. */
+export function useEstado(): Estado {
+  useSyncExternalStore(inscrever, () => versao);
+  return estado;
+}
+
+export function notificar(): void {
+  versao++;
+  for (const fn of ouvintes) fn();
+}
+
+// ---- seletores auxiliares ----
+
 export function modeloDe(id: string) {
   return estado.catalogos?.modelos.find((m) => m.id === id) ?? estado.catalogos?.modelos[0];
 }
@@ -46,18 +72,16 @@ export function marcarSujo(): void {
   estado.status = "sujo";
   if (temporizador) clearTimeout(temporizador);
   temporizador = setTimeout(() => void salvarAgora(), 800);
-  notificar();          // prévia atualiza já (AGENTS.md §7)
-  notificarStatus();
+  notificar(); // prévia atualiza já
 }
 
-/** Salva já (usado pelo debounce e antes de trocar de campanha). */
+/** Salva já (usado pelo debounce e antes de trocar de campanha/exportar). */
 export async function salvarAgora(): Promise<void> {
   if (temporizador) { clearTimeout(temporizador); temporizador = null; }
   const c = estado.campanha;
   if (!c) return;
   estado.status = "salvando";
   notificar();
-  notificarStatus();
   try {
     const salva = await gravarCampanha(c);
     c.revisao = salva.revisao;
@@ -74,32 +98,22 @@ export async function salvarAgora(): Promise<void> {
     }
   }
   notificar();
-  notificarStatus();
-}
-
-// Observadores simples: aoMudar dispara quando o conteúdo muda (prévia),
-// aoStatus quando só o indicador de salvamento muda (não reconstrói o painel).
-type Ouvinte = () => void;
-const ouvintes: Ouvinte[] = [];
-const ouvintesStatus: Ouvinte[] = [];
-
-export function aoMudar(fn: Ouvinte): void {
-  ouvintes.push(fn);
-}
-
-export function aoStatus(fn: Ouvinte): void {
-  ouvintesStatus.push(fn);
-}
-
-function notificar(): void {
-  for (const fn of ouvintes) fn();
-}
-
-function notificarStatus(): void {
-  for (const fn of ouvintesStatus) fn();
 }
 
 /** Mudança que afeta a prévia mas não suja a campanha (ex.: "ver todas"). */
 export function notificarConteudo(): void {
   notificar();
+}
+
+// ---- tema (só o painel; a arte é sempre clara) ----
+
+export function alternarTema(): void {
+  estado.tema = estado.tema === "escuro" ? "claro" : "escuro";
+  localStorage.setItem("vca-tema", estado.tema);
+  aplicarTema();
+  notificar();
+}
+
+export function aplicarTema(): void {
+  document.documentElement.dataset.theme = estado.tema;
 }

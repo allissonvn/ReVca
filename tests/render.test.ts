@@ -14,7 +14,92 @@ function carregarCatalogos(): Catalogos {
   };
 }
 
-const campanhaSeed = CampanhaSchema.parse(JSON.parse(readFileSync(join("data", "campanhas", "exemplo.json"), "utf8")));
+// Campanha de teste FIXA (não depende de data/campanhas, que o usuário edita
+// pela interface — ver lição: testes nunca devem ler dados mutáveis).
+const campanhaSeed = CampanhaSchema.parse({
+  versao: 1,
+  id: "teste",
+  titulo: "Parcelamento Matriz - BLACK FRIDAY",
+  mes: "NOVEMBRO",
+  paginas: [
+    {
+      id: "pag-1",
+      modelo: "residencial",
+      faixa: "Linha: Uni Residencial",
+      cartoes: [{
+        id: "car-1", empreendimentoId: "uni-ville",
+        titulo: ["Condições para o Uni Ville Residencial", "1ª etapa (31/12/2027)"],
+        blocos: [
+          { id: "blo-1", tipo: "financiamento", ativo: true, largura: 2, titulo: "FINANCIAMENTO CEF", tituloCor: "preto",
+            texto: "Sinal de [[azul]]R$ 3.000,00[[/]] em até [[azul]]3x[[/]]\nSaldo em [[azul]]50x[[/]] com [[azul]]INCC[[/]]" },
+          { id: "blo-2", tipo: "documentacao", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+            texto: "Documentação ((vermelho))GRÁTIS((/)) para\nclientes ((vermelho))SBPE((/))" },
+          { id: "blo-3", tipo: "documentacao", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+            texto: "Documentação ((vermelho))GRÁTIS((/)) apenas\npara os clientes ((vermelho))MCMV((/))" },
+          { id: "blo-4", tipo: "observacao", ativo: true, largura: 2, titulo: "OBSERVAÇÃO", tituloCor: "vermelho",
+            texto: "SE A SOMA DOS VALORES FOR [[azul]]5%[[/]] DO VALOR DO IMÓVEL" },
+          { id: "blo-5", tipo: "prosoluto", ativo: true, largura: 2, titulo: "", tituloCor: "preto", texto: "Pró-soluto de 10%" },
+        ],
+      }],
+    },
+    {
+      id: "pag-2",
+      modelo: "duplo",
+      cartoes: [
+        { id: "car-2", empreendimentoId: "dona-olivia", faixa: "Dona Olivia Universidade",
+          titulo: ["Condições para Dona Olivia Universidade"],
+          blocos: [{ id: "blo-6", tipo: "facilita", ativo: true, largura: 2, titulo: "PARCELAMENTO FACILITA", tituloCor: "preto",
+            texto: "Sinal de [[azul]]30%[[/]] ((vermelho))SEM PARCELAMENTO((/))" }] },
+        { id: "car-3", empreendimentoId: "dona-olivia", faixa: "Dona Olivia Universidade - Garagens extras",
+          titulo: ["Condições para as vagas extras do Dona Olivia Universidade"],
+          blocos: [{ id: "blo-7", tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto",
+            texto: "Sinal de [[azul]]R$ 3.000,00[[/]], + [[azul]]34X[[/]]" }] },
+      ],
+    },
+    {
+      id: "pag-3",
+      modelo: "loteamentos",
+      faixa: "Linha: Loteamentos",
+      cartoes: [
+        { id: "car-4", empreendimentoId: "baron-1", titulo: ["Condições para o Baron Connect I (entregue)"],
+          blocos: [
+            { id: "blo-8", tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto",
+              texto: "Sinal de tabela em até [[azul]]3x[[/]] sem chocar" },
+            { id: "blo-9", tipo: "promocao", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+              texto: "Venda à vista:\n[[azul]]10%[[/]] de desconto" },
+            { id: "blo-10", tipo: "investidor", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+              texto: "PARCELAMENTO em\naté [[azul]]24x[[/]] sem juros." },
+          ] },
+        { id: "car-5", empreendimentoId: "baron-2", titulo: ["Condições para o Baron Connect II (entregue)"],
+          blocos: [
+            { id: "blo-11", tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto",
+              texto: "Sinal de tabela em até [[azul]]3x[[/]] sem chocar" },
+            { id: "blo-12", tipo: "promocao", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+              texto: "Venda à vista:\n[[azul]]10%[[/]] de desconto" },
+            { id: "blo-13", tipo: "investidor", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+              texto: "PARCELAMENTO em\naté [[azul]]24x[[/]] sem juros." },
+          ] },
+        { id: "car-6", empreendimentoId: "baron-uchoa", titulo: ["Condições para o Baron Uchôa (entregue)"],
+          blocos: [
+            { id: "blo-14", tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto",
+              texto: "Sinal de tabela em até [[azul]]3x[[/]] e parcelamento em [[azul]]132x[[/]]" },
+            { id: "blo-15", tipo: "avista", ativo: true, largura: 1, titulo: "", tituloCor: "preto",
+              texto: "Venda à vista:\n[[azul]]10%[[/]] de desconto" },
+          ] },
+      ],
+    },
+    {
+      id: "pag-4",
+      modelo: "aviso",
+      faixa: "VCA Praia",
+      cartoes: [{ id: "car-7", empreendimentoId: "kahakai", titulo: ["Condições para o Kahakai Prado"],
+        blocos: [{ id: "blo-16", tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto",
+          texto: "Não deixe de cadastrar o seu cliente no nosso\nmais novo projeto em Prado." }] }],
+    },
+  ],
+  revisao: 1,
+  atualizadoEm: new Date().toISOString(),
+});
 
 describe("renderCampanha", () => {
   const html = renderCampanha(campanhaSeed, carregarCatalogos());

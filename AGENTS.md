@@ -14,7 +14,7 @@ Referências na pasta `referencia/`:
 
 - Node.js 20+ e TypeScript em modo `strict`, ES modules, npm.
 - Servidor: Express. Validação: Zod.
-- Front-end: HTML estático + TypeScript puro, empacotado com esbuild. **Sem framework.**
+- Front-end: React 19 (JSX + `useSyncExternalStore`), empacotado com esbuild. Sem biblioteca de componentes nem CSS-in-JS.
 - Persistência: **arquivos JSON** em `data/`. **Sem banco de dados.**
 - Exportação: Puppeteer (Chromium headless).
 - Fontes: pacotes `@fontsource/anton`, `@fontsource/oswald`, `@fontsource/open-sans` (nada de Google Fonts online; o app roda offline).
@@ -34,7 +34,7 @@ data/
   historico/           cópias antigas das campanhas (gitignored)
 src/shared/            tipos Zod, markup, layout, render (usado por cliente E servidor)
 src/server/            index.ts, rotas, storage, export
-src/client/            index.html, main.ts, módulos do editor, estilos
+src/client/            index.html, main.tsx, store.tsx, telas/, componentes/, estilos
 tests/
 iniciar.bat  iniciar.sh
 ```
@@ -122,7 +122,7 @@ Layout: painel de edição à esquerda, prévia à direita (em tela estreita, em
 - Bloco: liga/desliga, lista de títulos prontos + campo de texto livre do título + cor do título, largura (1 ou 2 colunas), subir/descer/remover, textarea com botões de cor. Adicionar bloco escolhendo o tipo.
 - **Salvamento automático** com debounce de ~800 ms e indicador "salvo / salvando / erro / conflito". Em 409, oferecer recarregar.
 - **Aviso de estouro**: se o conteúdo de uma página ultrapassar 1308 px de altura, mostrar aviso na página (a arte corta silenciosamente; o usuário precisa ser avisado).
-- Não reconstruir o painel inteiro a cada tecla (o foco do campo não pode ser perdido). Use delegação de eventos.
+- Estado central em `store.tsx` (mutável + `notificar()`); componentes React assinam com `useEstado()` (`useSyncExternalStore` por versão). Digitação altera o objeto e notifica — o React re-renderiza só o que mudou e o foco nunca é perdido (campos controlados mostram texto puro; o markup vive no modelo).
 - Acessibilidade básica: `label`/`aria-label` em todo controle, navegação por teclado.
 - Interface em pt-BR. Tema claro/escuro só no painel; a **página (arte) é sempre clara**.
 

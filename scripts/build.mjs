@@ -42,12 +42,13 @@ await passo("seed", () => build({
   logLevel: "warning",
 }));
 
-// Cliente (bundle para navegador)
+// Cliente (bundle para navegador). jsx: automatic → main.tsx (React).
 await passo("cliente", () => build({
-  entryPoints: [join(raiz, "src/client/main.ts")],
+  entryPoints: [join(raiz, "src/client/main.tsx")],
   outdir: join(raiz, "dist/client"),
   bundle: true,
   format: "iife",
+  jsx: "automatic",
   sourcemap: true,
   logLevel: "warning",
 }));

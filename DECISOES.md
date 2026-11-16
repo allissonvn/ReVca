@@ -41,6 +41,16 @@
 - No .bat, npm é invocado com "call" (para o errorlevel voltar ao script); a porta é fixa em 8080, igual ao link aberto no navegador (HOST/PORT por variável de ambiente continuam disponíveis).
 - Teste de clone novo: com dist/ apagado, iniciar.bat reconstruiu e serviu o cliente (/, /api/campanhas 200).
 
+## Update v1.2 (front-end em React)
+- Motivação: telas mais reativas e familiares para o usuário final (layout estilo Canva: páginas à esquerda, arte ao centro, propriedades à direita). A edição manual de DOM (delegação de eventos + restauração de foco) crescia demais para as novidades de UI.
+- Escolha: **React 19 + esbuild existente** (bundle ~45 KB gzip, irrelevante em localhost). Next.js descartado (exigiria segundo servidor/SSR sem ganho em app local offline); Angular descartado (peso e cerimônia contra a simplicidade exigida em §10). Sem biblioteca de componentes — o design system é CSS próprio (~250 linhas com tokens claro/escuro).
+- Peso: +3 pacotes npm (react, react-dom, types). Nenhuma dependência nova em runtime de servidor.
+- Arquitetura do cliente: `store.tsx` mantém o estado mutável único (como o antigo `estado.ts`) + `notificar()`; componentes assinam via `useSyncExternalStore` com contador de versão. Escolhido em vez de reducer/contexto para manter a lógica de autosave/409/debounce idêntica à que já estava testada.
+- O canvas renderiza `renderCampanha()` com `dangerouslySetInnerHTML`: o React não reconcilia a arte (ela é string de `render.ts`, que escapa todo texto do usuário). Nenhuma duplicação de arte.
+- Campos coloráveis (`CampoCor`) guardam faixas em `useRef` por foco (antes: WeakMap + focusin/focusout globais) e reusam as primitivas puras de `markup.ts` (extrair/ajustar/pintar/montar), que continuam testadas.
+- `npm run dev` implementado: servidor Express + esbuild watch (cliente e servidor; o processo do servidor reinicia quando o bundle dele muda).
+- Lição reforçada: `tests/render.test.ts` usava `data/campanhas/exemplo.json` (mutável pelo usuário) e quebrou quando a campanha foi editada pela interface. Agora o fixture é inline no teste — testes nunca leem dados editáveis.
+
 ## Update v1.1 (cores Canva, home com miniaturas, exportação com opções)
 - Markup ganhou cor livre: `[[#rrggbb]]` abre, `[[/]]` fecha (só aceita # + 6 hex — nada de HTML injetado); `[[azul]]` e `((vermelho))` continuam válidos. `montarMarcado` prefere o token nomeado quando a cor é a canônica.
 - Edição "estilo Canva": o campo mostra o TEXTO PURO (sem marcadores); as cores vivem em faixas na memória (`cores.ts`, WeakMap por elemento) e viram markup no estado a cada tecla (prévia e autosave continuam markup). Faixas nunca cruzam quebra de linha; digitação dentro de texto colorido estende a cor (`ajustarRanges` com diff por prefixo/sufixo comum).
