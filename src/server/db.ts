@@ -3,11 +3,11 @@
 // Tabelas: usuarios e sessoes.
 // Usa better-sqlite3 carregado via createRequire do banner do esbuild
 // porque é um módulo CJS com binário nativo que precisa de __dirname (não funciona com import ESM estático).
-import { createRequire } from "node:module";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { acharRaiz } from "../shared/raiz.js";
 
+// createRequire injetado pelo banner do esbuild
 const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 
