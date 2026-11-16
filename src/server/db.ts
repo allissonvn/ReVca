@@ -26,18 +26,26 @@ export type Sessao = {
   expiraEm: string;
 };
 
-// Cache de instâncias por caminho do banco (evita singleton compartilhado entre testes)
-const dbs = new Map<string, Database.Database>();
+// Interface do banco de dados SQLite (subconjunto dos métodos usados)
+export interface DbInstance {
+  pragma(sql: string): void;
+  exec(sql: string): void;
+  prepare(sql: string): any;
+  close(): void;
+}
 
-export function getDb(raizDados?: string): Database.Database {
+// Cache de instâncias por caminho do banco (evita singleton compartilhado entre testes)
+const dbs = new Map<string, DbInstance>();
+
+export function getDb(raizDados?: string): DbInstance {
   const raiz = raizDados ?? join(acharRaiz(), "data");
   const chave = raiz;
-  let db = dbs.get(chave);
+  let db: DbInstance | undefined = dbs.get(chave);
   if (!db) {
     mkdirSync(raiz, { recursive: true });
-    db = new Database(join(raiz, "vca.db"));
-    db.pragma("journal_mode = WAL");
-    db.exec(`
+    const dbInstance = new Database(join(raiz, "vca.db"));
+    dbInstance.pragma("journal_mode = WAL");
+    dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS usuarios (
         id TEXT PRIMARY KEY,
         nome TEXT NOT NULL,
@@ -57,9 +65,10 @@ export function getDb(raizDados?: string): Database.Database {
       CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token);
       CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
     `);
+    db = dbInstance;
     dbs.set(chave, db);
   }
-  return db;
+  return db!;
 }
 
 export function fecharDb(raizDados?: string): void {
