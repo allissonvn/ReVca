@@ -28,7 +28,6 @@ await passo("servidor", () => build({
   format: "esm",
   sourcemap: true,
   external: ["puppeteer", "better-sqlite3"],
-  banner: { js: `import { createRequire } from "node:module"; const require = createRequire(import.meta.url);` },
   logLevel: "warning",
 }));
 
