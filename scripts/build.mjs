@@ -17,7 +17,9 @@ const passo = async (nome, acao) => {
   }
 };
 
-// Servidor: bundle node (puppeteer fica externo por causa de binários dinâmicos)
+// Servidor: bundle node (puppeteer fica externo por causa de binários dinâmicos).
+// O banner com createRequire é necessário porque dependências CJS (express)
+// precisam de require de verdade dentro do bundle ESM.
 await passo("servidor", () => build({
   entryPoints: [join(raiz, "src/server/index.ts")],
   outfile: join(raiz, "dist/server/index.js"),
@@ -26,6 +28,7 @@ await passo("servidor", () => build({
   format: "esm",
   sourcemap: true,
   external: ["puppeteer"],
+  banner: { js: `import { createRequire } from "node:module"; const require = createRequire(import.meta.url);` },
   logLevel: "warning",
 }));
 
@@ -51,6 +54,10 @@ await passo("cliente", () => build({
 
 await passo("html", () => {
   copyFileSync(join(raiz, "src/client/index.html"), join(raiz, "dist/client/index.html"));
+});
+
+await passo("estilos", () => {
+  copyFileSync(join(raiz, "src/client/styles.css"), join(raiz, "dist/client/styles.css"));
 });
 
 // Fontes locais (@fontsource): woff2 latin que o CSS da arte referencia
