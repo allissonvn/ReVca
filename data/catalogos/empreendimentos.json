@@ -1,8 +1,196 @@
 [
-  { "id": "uni-ville", "nome": ["Condições para o Uni Ville Residencial", "1ª etapa (31/12/2027)"], "faixa": "Linha: Uni Residencial", "logo": "uni-ville.png" },
-  { "id": "dona-olivia", "nome": ["Condições para Dona Olivia Universidade"], "faixa": "Dona Olivia Universidade", "logo": "dona-olivia.png" },
-  { "id": "baron-1", "nome": ["Condições para o Baron Connect I (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-connect.png" },
-  { "id": "baron-2", "nome": ["Condições para o Baron Connect II (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-connect.png" },
-  { "id": "baron-uchoa", "nome": ["Condições para o Baron Uchôa (entregue)"], "faixa": "Linha: Loteamentos", "logo": "baron-uchoa.png" },
-  { "id": "kahakai", "nome": ["Condições para o Kahakai Prado"], "faixa": "VCA Praia", "logo": "kahakai.png" }
+  {
+    "id": "uni-ville",
+    "nome": [
+      "Condições para o Uni Ville Residencial",
+      "1ª etapa (31/12/2027)"
+    ],
+    "faixa": "Linha: Uni Residencial",
+    "logo": "uni-ville.png"
+  },
+  {
+    "id": "uni-house-leste",
+    "nome": [
+      "Condições para o Uni House Residencial Leste"
+    ],
+    "faixa": "Linha: Uni Residencial",
+    "logo": null
+  },
+  {
+    "id": "uni-house-marques",
+    "nome": [
+      "Condições para o Uni House Residencial do Marquês"
+    ],
+    "faixa": "Linha: Uni Residencial",
+    "logo": null
+  },
+  {
+    "id": "dona-lys",
+    "nome": [
+      "Condições para o Dona Lys"
+    ],
+    "faixa": "Linha: Dona",
+    "logo": null
+  },
+  {
+    "id": "vila-do-servidor",
+    "nome": [
+      "Condições para a Vila do Servidor"
+    ],
+    "faixa": "Vila do Servidor",
+    "logo": null
+  },
+  {
+    "id": "bellator-olivia",
+    "nome": [
+      "Condições para o Bellator Olivia Residence"
+    ],
+    "faixa": "Linha: Bellator Residence",
+    "logo": null
+  },
+  {
+    "id": "bellator-residence",
+    "nome": [
+      "Condições para o Bellator Residence",
+      "(26/02/2027)"
+    ],
+    "faixa": "Linha: Bellator Residence",
+    "logo": null
+  },
+  {
+    "id": "sculptor-residence",
+    "nome": [
+      "Condições para o Sculptor Residence"
+    ],
+    "faixa": "Linha: Premium",
+    "logo": null
+  },
+  {
+    "id": "duque-lavenir",
+    "nome": [
+      "Condições para Duque Lavenir"
+    ],
+    "faixa": "Linha: Duque",
+    "logo": null
+  },
+  {
+    "id": "kahakai",
+    "nome": [
+      "Condições para o Kahakai Prado"
+    ],
+    "faixa": "VCA Praia",
+    "logo": "kahakai.png"
+  },
+  {
+    "id": "dona-olivia",
+    "nome": [
+      "Condições para Dona Olivia Universidade"
+    ],
+    "faixa": "Dona Olivia Universidade",
+    "logo": "dona-olivia.png"
+  },
+  {
+    "id": "dona-miraí",
+    "nome": [
+      "Condições para Dona Miraí Residencial"
+    ],
+    "faixa": "Linha: Dona Miraí Residencial",
+    "logo": null
+  },
+  {
+    "id": "duque-dulest",
+    "nome": [
+      "Condições para Duque Du'lest"
+    ],
+    "faixa": "Linha: Duque Du'lest",
+    "logo": null
+  },
+  {
+    "id": "verso-residence",
+    "nome": [
+      "Condições para Verso Residence"
+    ],
+    "faixa": "Linha: Verso Residence",
+    "logo": null
+  },
+  {
+    "id": "bem-viver",
+    "nome": [
+      "Condições para Bem Viver Residencial"
+    ],
+    "faixa": "Linha: Bem Viver Residencial",
+    "logo": null
+  },
+  {
+    "id": "du-bem",
+    "nome": [
+      "Condições para Du Bem Residencial"
+    ],
+    "faixa": "Linha: Du Bem Residencial",
+    "logo": null
+  },
+  {
+    "id": "baron-1",
+    "nome": [
+      "Condições para o Baron Connect I (entregue)"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": "baron-connect.png"
+  },
+  {
+    "id": "baron-2",
+    "nome": [
+      "Condições para o Baron Connect II (entregue)"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": "baron-connect.png"
+  },
+  {
+    "id": "baron-uchoa",
+    "nome": [
+      "Condições para o Baron Uchôa (entregue)"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": "baron-uchoa.png"
+  },
+  {
+    "id": "amado-residencial",
+    "nome": [
+      "Condições para o Amado Residencial"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": null
+  },
+  {
+    "id": "connect-tech-1",
+    "nome": [
+      "Condições para o Connect Tech I"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": null
+  },
+  {
+    "id": "bela-morada",
+    "nome": [
+      "Condições para o Bela Morada (entregue)"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": null
+  },
+  {
+    "id": "connect-tech-2",
+    "nome": [
+      "Condições para o Connect Tech II"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": null
+  },
+  {
+    "id": "desenvolvimento-leste",
+    "nome": [
+      "Condições para o Desenvolvimento Leste"
+    ],
+    "faixa": "Linha: Loteamentos",
+    "logo": null
+  }
 ]
