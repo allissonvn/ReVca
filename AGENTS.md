@@ -15,12 +15,13 @@ Referências na pasta `referencia/`:
 - Node.js 20+ e TypeScript em modo `strict`, ES modules, npm.
 - Servidor: Express. Validação: Zod.
 - Front-end: React 19 (JSX + `useSyncExternalStore`), empacotado com esbuild. Sem biblioteca de componentes nem CSS-in-JS.
-- Persistência: **arquivos JSON** em `data/`. **Sem banco de dados.**
+- Persistência: **SQLite** em `data/vca.db` (arquivo único, sem servidor separado) + JSON em `data/campanhas/` para campanhas.
 - Exportação: Puppeteer (Chromium headless).
 - Fontes: pacotes `@fontsource/anton`, `@fontsource/oswald`, `@fontsource/open-sans` (nada de Google Fonts online; o app roda offline).
 - Testes: Vitest.
 - Não instale outras dependências sem justificar em `DECISOES.md`.
 - Sem Docker no v1.
+- Autenticação: sessão HTTP-only cookie (express-session) + bcrypt para senhas. Papéis: `editor` e `leitor`.
 
 ## 3. Estrutura de pastas
 
@@ -44,7 +45,7 @@ iniciar.bat  iniciar.sh
 Idioma: chaves de dados e termos do domínio em **português** (iguais ao protótipo); nomes de funções e código genérico em **inglês**.
 
 ```ts
-Campanha { versao: 1; id; titulo; mes; rodape?: string; paginas: Pagina[]; revisao: number; atualizadoEm: string }
+Campanha { versao: 1; id; usuarioId; titulo; mes; rodape?: string; paginas: Pagina[]; revisao: number; atualizadoEm: string }
 Pagina   { id; modelo: ModeloId; faixa?: string; cartoes: Cartao[] }          // faixa = faixa azul da página
 Cartao   { id; empreendimentoId: string | null; faixa?: string;               // faixa só nos modelos com faixa por cartão
            titulo: string[];                                                  // faixa verde, 1 ou 2 linhas
@@ -55,8 +56,10 @@ Bloco    { id; tipo: TipoBlocoId; ativo: boolean; largura: 1 | 2;
 ```
 
 - `mes` é um dos 12 meses em maiúsculas. `titulo` da campanha vale para o PDF inteiro.
+- `usuarioId` vincula a campanha ao usuário que a criou (só ele pode editar/excluir; `leitor` só visualiza).
 - Validação com Zod em `src/shared/schema.ts`. Todo arquivo lido do disco ou recebido pela API passa pelo schema.
 - `versao` existe para migrações futuras. `revisao` sobe a cada gravação (controle de concorrência).
+- Senhas são armazenadas com hash bcrypt (never plain text).
 
 ### Catálogos (JSON editado à mão pelo dono; sem tela de edição no v1)
 
@@ -98,18 +101,29 @@ Parser em `src/shared/markup.ts`, função pura, com testes:
 
 ## 6. API REST (Express, escuta em 127.0.0.1; `HOST`/`PORT` por variável de ambiente)
 
-- `GET /api/campanhas` lista (`id, titulo, mes, atualizadoEm, nPaginas`).
+### Autenticação
+- `POST /api/auth/login` — autentica usuário (email + senha), cria sessão (cookie HTTP-only).
+- `POST /api/auth/logout` — encerra a sessão.
+- `GET /api/auth/me` — devolve o usuário logado (ou 401 se não autenticado).
+- `POST /api/auth/usuarios` — cadastra novo usuário (só pode ser chamado sem sessão, para o primeiro admin).
+
+### Campanhas (exigem autenticação)
+- `GET /api/campanhas` lista campanhas do usuário logado (`id, titulo, mes, atualizadoEm, nPaginas`).
 - `POST /api/campanhas` cria em branco, ou `{ duplicarDe, mes }` para duplicar para outro mês.
 - `GET /api/campanhas/:id` · `DELETE /api/campanhas/:id` (move para lixeira, não apaga).
 - `PUT /api/campanhas/:id` grava. Exige a `revisao` que o cliente viu: se diferente da do disco, responde **409** com a versão atual. Falha de schema responde **422** com os erros do Zod.
+- Usuários com papel `leitor` só podem `GET` (listar e visualizar); `editor` pode tudo.
+- Somente o dono da campanha (ou admin) pode editar/excluir.
+
+### Catálogos e render (mesmo do v1)
 - `GET /api/catalogos` devolve os 4 catálogos (lidos do disco a cada requisição).
 - `GET /render/:id` HTML com todas as páginas empilhadas (usado pelo exportador e pela visualização).
 - `POST /api/campanhas/:id/exportar?formato=pdf|png[&pagina=n]` devolve o arquivo.
 - `GET /logos/*` serve `data/logos`.
 
 ### Persistência (`src/server/storage.ts`)
-- Escrita **atômica**: grava em arquivo temporário e renomeia.
-- A cada gravação, copia a versão anterior para `data/historico/<id>/<timestamp>.json` e mantém só as 20 mais recentes.
+- Usuários e sessões ficam em **SQLite** (`data/vca.db`).
+- Campanhas continuam em **arquivos JSON** em `data/campanhas/` (escrita atômica, histórico com as 20 versões mais recentes, lixeira).
 - `id` e nomes de arquivo sanitizados (sem `..`, sem barras).
 
 ## 7. Editor (src/client)
@@ -149,9 +163,9 @@ Scripts `iniciar.bat` e `iniciar.sh` instalam o que faltar, constroem se preciso
 - Testes (Vitest) obrigatórios para: markup, schema, migração, storage atômico, conflito de revisão (409), contagem de páginas do PDF exportado.
 - Commits pequenos, mensagem em português, um por etapa do PROMPT.md.
 
-## 11. Fora do escopo do v1 (não implemente)
+## 11. Fora do escopo do v2 (não implemente)
 
-Login/permissões · banco de dados · tela de edição dos catálogos · edição com cor visível dentro do campo (WYSIWYG) · desfazer estrutural · colaboração em tempo real · importar o PDF automaticamente · verificação automática de inconsistências de texto (ex.: "R$ 3.000,00" vs "R$3.000,00") · Docker · empacotar como app de desktop.
+Tela de edição dos catálogos · edição com cor visível dentro do campo (WYSIWYG) · desfazer estrutural · colaboração em tempo real · importar o PDF automaticamente · verificação automática de inconsistências de texto (ex.: "R$ 3.000,00" vs "R$3.000,00") · Docker · empacotar como app de desktop.
 
 ## 12. Lições do protótipo (o que NÃO repetir)
 

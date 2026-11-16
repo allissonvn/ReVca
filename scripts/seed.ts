@@ -16,6 +16,7 @@ const bloco = (
 const seed: Campanha = {
   versao: 1,
   id: "exemplo",
+  usuarioId: "admin",
   titulo: "Parcelamento Matriz - BLACK FRIDAY",
   mes: "NOVEMBRO",
   paginas: [

@@ -1,50 +1,168 @@
 // Servidor Express (AGENTS.md §6): API REST + /render + estáticos.
 // Escuta em 127.0.0.1 por padrão (HOST/PORT por variável de ambiente).
+// v2: autenticação via cookie HTTP-only + papéis editor/leitor.
 import express, { Express, Request, Response, NextFunction } from "express";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mkdirSync } from "node:fs";
 import { ZodError } from "zod";
-import { Campanha, CampanhaSchema, MESES } from "../shared/schema.js";
+import {
+  Campanha, CampanhaSchema, MESES, UsuarioResumo,
+} from "../shared/schema.js";
 import { renderDocumento } from "../shared/render.js";
 import { criarStorage, Storage, IdInvalidoError, NaoEncontradoError, ConflitoRevisaoError } from "./storage.js";
 import { lerCatalogos } from "./catalogos.js";
 import { criarExportador, Exportador, nomeArquivo } from "./export.js";
 import { acharRaiz } from "../shared/raiz.js";
+import { getDb, fecharDb } from "./db.js";
+import { criarAutenticacao } from "./auth.js";
 
 export type OpcoesServidor = {
   raizDados?: string;   // onde ficam campanhas/catálogos/logos (padrão: <projeto>/data)
   raizProjeto?: string; // para servir dist/client (padrão: raiz do projeto)
   storage?: Storage;    // injetável (testes)
   exportador?: Exportador; // injetável (testes)
+  autenticacao?: ReturnType<typeof criarAutenticacao>; // injetável (testes)
 };
+
+const COOKIE_NOME = "connect.sid";
 
 export function criarApp(opcoes: OpcoesServidor = {}): Express {
   const raiz = opcoes.raizProjeto ?? acharRaiz();
   const raizDados = opcoes.raizDados ?? join(raiz, "data");
   const storage = opcoes.storage ?? criarStorage(raizDados);
+  const auth = opcoes.autenticacao ?? criarAutenticacao();
 
   const app = express();
   app.use(express.json({ limit: "10mb" }));
-  // guardado para o encerramento fechar o Chromium (AGENTS.md §8)
+
+  // guardado para o encerramento fechar o Chromium e o SQLite (AGENTS.md §8)
   const exportador = opcoes.exportador ?? criarExportador({ urlBase: () => (app.locals.urlBase as string | undefined) ?? "http://127.0.0.1:8080" });
   app.locals.exportador = exportador;
 
-  const lerOuNada = (req: Request, res: Response): Campanha | null => {
-    try {
-      return storage.ler(req.params.id ?? "");
-    } catch (e) {
-      tratarErro(e, res);
-      return null;
+  // ---- Middleware de autenticação ----
+  type ReqComUsuario = Request & { usuario?: UsuarioResumo };
+
+  /** Extrai o token do cookie connect.sid, do header Authorization: Bearer ou do query param ?token=. */
+  function lerToken(req: Request): string | undefined {
+    // 1. tenta header Authorization: Bearer <token>
+    const auth = req.headers.authorization;
+    if (auth?.startsWith("Bearer ")) {
+      return auth.slice(7);
     }
+    // 2. tenta query param ?token=xxx (req.query já parseado pelo Express)
+    const tokenParam = (req.query as Record<string, string | string[] | undefined>)?.token;
+    if (typeof tokenParam === "string") return tokenParam;
+    // 3. tenta cookie connect.sid
+    const cookie = req.headers.cookie;
+    if (cookie) {
+      const partes = cookie.split(";").map((p) => p.trim());
+      for (const p of partes) {
+        if (p.startsWith(`${COOKIE_NOME}=`)) {
+          return p.slice(COOKIE_NOME.length + 1);
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /** Define o cookie de sessão na resposta. */
+  function definirCookieSessao(res: Response, token: string): void {
+    res.setHeader("Set-Cookie", `${COOKIE_NOME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60 * 1000}`);
+  }
+
+  /** Limpa o cookie de sessão. */
+  function limparCookieSessao(res: Response): void {
+    res.setHeader("Set-Cookie", `${COOKIE_NOME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  }
+
+  const requerSessao = (req: ReqComUsuario, res: Response, next: NextFunction): void => {
+    const token = lerToken(req);
+    console.log("DEBUG servidor requerSessao: token=", token?.substring(0, 20), "cookies=", req.headers.cookie);
+    if (!token) {
+      res.status(401).json({ erro: "não autenticado" });
+      return;
+    }
+    const usuario = auth.validarSessao(token);
+    if (!usuario) {
+      res.status(401).json({ erro: "sessão expirada ou inválida" });
+      return;
+    }
+    req.usuario = auth.usuarioResumo(usuario);
+    next();
   };
 
-  // ---- API ----
-  app.get("/api/campanhas", (_req, res) => {
-    res.json(storage.listar());
+  const requerEditor = (req: ReqComUsuario, res: Response, next: NextFunction): void => {
+    if (!req.usuario) {
+      res.status(401).json({ erro: "não autenticado" });
+      return;
+    }
+    if (req.usuario.papel !== "editor") {
+      res.status(403).json({ erro: "apenas editores podem criar/editar/excluir campanhas" });
+      return;
+    }
+    next();
+  };
+
+  const podeVerCampanha = (usuario: UsuarioResumo | undefined, campanha: Campanha): boolean => {
+    if (!usuario) return false;
+    if (usuario.papel === "editor") return true;
+    return campanha.usuarioId === usuario.id;
+  };
+
+  // ---- Auth ----
+  app.post("/api/auth/login", (req, res) => {
+    try {
+      const { usuario, token } = auth.login(req.body);
+      definirCookieSessao(res, token);
+      res.status(200)
+        .set("x-auth-token", token)
+        .json({ usuario, token }); // token também no corpo e header para facilitar testes
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ erro: e instanceof Error ? e.message : String(e) });
+    }
   });
 
-  app.post("/api/campanhas", (req, res) => {
+  app.post("/api/auth/logout", requerSessao, (req, res) => {
+    const token = lerToken(req);
+    if (token) auth.logout(token);
+    limparCookieSessao(res);
+    res.status(204).end();
+  });
+
+  app.get("/api/auth/me", requerSessao, (req: ReqComUsuario, res) => {
+    res.json({ usuario: req.usuario });
+  });
+
+  app.post("/api/auth/usuarios", (req, res) => {
+    // Só permite cadastro se não houver sessão ativa (primeiro usuário)
+    const token = lerToken(req);
+    if (token && auth.validarSessao(token)) {
+      res.status(403).json({ erro: "cadastro só permitido sem sessão ativa" });
+      return;
+    }
+    try {
+      const usuario = auth.cadastrarUsuario(req.body);
+      res.status(201).json(usuario);
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 500;
+      res.status(status).json({ erro: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  // ---- Campanhas (exigem autenticação) ----
+  app.get("/api/campanhas", requerSessao, (req: ReqComUsuario, res) => {
+    const usuario = req.usuario!;
+    const campanhas = storage.listar(
+      usuario.papel === "leitor" ? usuario.id : undefined,
+      usuario.papel
+    );
+    res.json(campanhas);
+  });
+
+  app.post("/api/campanhas", requerSessao, requerEditor, (req: ReqComUsuario, res) => {
+    const usuario = req.usuario!;
     const corpo = (req.body ?? {}) as { duplicarDe?: string; mes?: string };
     const mes = corpo.mes && (MESES as readonly string[]).includes(corpo.mes)
       ? corpo.mes
@@ -52,32 +170,51 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     try {
       if (corpo.duplicarDe) {
         const origem = storage.ler(corpo.duplicarDe);
+        if (!podeVerCampanha(usuario, origem)) {
+          res.status(403).json({ erro: "não é dono desta campanha" });
+          return;
+        }
         const nova: Campanha = {
           ...origem,
           id: novoId(),
+          usuarioId: usuario.id,
           mes: mes as Campanha["mes"],
           revisao: 1,
           atualizadoEm: new Date().toISOString(),
         };
         res.status(201).json(storage.criar(CampanhaSchema.parse(nova)));
       } else {
-        res.status(201).json(storage.criar(campanhaEmBranco(mes)));
+        const nova = campanhaEmBranco(mes, usuario.id);
+        res.status(201).json(storage.criar(CampanhaSchema.parse(nova)));
       }
     } catch (e) {
       tratarErro(e, res);
     }
   });
 
-  app.get("/api/campanhas/:id", (req, res) => {
-    const c = lerOuNada(req, res);
-    if (c) res.json(c);
+  app.get("/api/campanhas/:id", requerSessao, (req: ReqComUsuario, res) => {
+    try {
+      const c = storage.ler(req.params.id!);
+      if (!podeVerCampanha(req.usuario, c)) {
+        res.status(403).json({ erro: "não é dono desta campanha" });
+        return;
+      }
+      res.json(c);
+    } catch (e) {
+      tratarErro(e, res);
+    }
   });
 
-  app.put("/api/campanhas/:id", (req, res) => {
+  app.put("/api/campanhas/:id", requerSessao, requerEditor, (req: ReqComUsuario, res) => {
     try {
       const entrada = CampanhaSchema.parse(req.body);
       if (entrada.id !== req.params.id) {
         res.status(422).json({ erro: "id do corpo difere do id da URL" });
+        return;
+      }
+      const atual = storage.ler(entrada.id);
+      if (!storage.podeEditar(req.usuario!.id, req.usuario!.papel, atual)) {
+        res.status(403).json({ erro: "não é dono desta campanha" });
         return;
       }
       res.json(storage.gravar(entrada));
@@ -86,17 +223,22 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     }
   });
 
-  app.delete("/api/campanhas/:id", (req, res) => {
+  app.delete("/api/campanhas/:id", requerSessao, requerEditor, (req: ReqComUsuario, res) => {
     try {
-      storage.ler(req.params.id); // 404 se não existe
-      storage.duplicarParaLixeira(req.params.id);
+      const atual = storage.ler(req.params.id!);
+      if (!storage.podeEditar(req.usuario!.id, req.usuario!.papel, atual)) {
+        res.status(403).json({ erro: "não é dono desta campanha" });
+        return;
+      }
+      storage.duplicarParaLixeira(req.params.id!);
       res.status(204).end();
     } catch (e) {
       tratarErro(e, res);
     }
   });
 
-  app.get("/api/catalogos", (_req, res) => {
+  // ---- Catálogos e render (mesmo do v1, exigem sessão) ----
+  app.get("/api/catalogos", requerSessao, (_req, res) => {
     try {
       res.json(lerCatalogos(raizDados));
     } catch (e) {
@@ -104,23 +246,30 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     }
   });
 
-  // ---- Render (usado pelo exportador e pela visualização) ----
-  app.get("/render/:id", (req, res) => {
-    const c = lerOuNada(req, res);
-    if (c) {
+  app.get("/render/:id", requerSessao, (req: ReqComUsuario, res) => {
+    try {
+      const c = storage.ler(req.params.id!);
+      if (!podeVerCampanha(req.usuario, c)) {
+        res.status(403).json({ erro: "não é dono desta campanha" });
+        return;
+      }
       res.type("html").send(renderDocumento(c, lerCatalogos(raizDados)));
+    } catch (e) {
+      tratarErro(e, res);
     }
   });
 
-  // ---- Exportação (AGENTS.md §8): formato=pdf|png, qualidade=alta|comprimida,
-  // pagina=1-based (uma página só) ----
-  app.post("/api/campanhas/:id/exportar", async (req, res) => {
-    const c = lerOuNada(req, res);
-    if (!c) return;
-    const formato = req.query.formato === "png" ? "png" : "pdf";
-    const comprimida = req.query.qualidade === "comprimida";
-    const paginaStr = typeof req.query.pagina === "string" ? Number(req.query.pagina) : undefined;
+  // ---- Exportação (AGENTS.md §8): exige sessão ----
+  app.post("/api/campanhas/:id/exportar", requerSessao, async (req: ReqComUsuario, res) => {
     try {
+      const c = storage.ler(req.params.id!);
+      if (!podeVerCampanha(req.usuario, c)) {
+        res.status(403).json({ erro: "não é dono desta campanha" });
+        return;
+      }
+      const formato = req.query.formato === "png" ? "png" : "pdf";
+      const comprimida = req.query.qualidade === "comprimida";
+      const paginaStr = typeof req.query.pagina === "string" ? Number(req.query.pagina) : undefined;
       const catalogos = lerCatalogos(raizDados);
       const opcoes = { comprimida, ...(paginaStr !== undefined ? { pagina: paginaStr } : {}) };
       if (formato === "pdf") {
@@ -193,10 +342,11 @@ function novoId(): string {
 }
 
 /** Campanha nova com uma página residencial em branco (para a prévia já funcionar). */
-function campanhaEmBranco(mes: string): Campanha {
+function campanhaEmBranco(mes: string, usuarioId: string): Campanha {
   return CampanhaSchema.parse({
     versao: 1,
     id: novoId(),
+    usuarioId,
     titulo: "Parcelamento Matriz",
     mes,
     paginas: [
@@ -231,11 +381,17 @@ if (process.argv[1] && import.meta.url === new URL(`file:///${process.argv[1].re
     console.log(`Editor VCA em http://${host}:${port}`);
     app.locals.urlBase = `http://${host}:${port}`;
   });
-  // encerra o Chromium junto com o servidor
+  // encerra o Chromium, o SQLite e o servidor
   const encerrar = () => {
-    void (app.locals.exportador as Exportador).fechar().then(() => server.close());
-    process.exit(0);
+    void (app.locals.exportador as Exportador).fechar().then(() => {
+      fecharDb();
+      server.close();
+      process.exit(0);
+    });
   };
   process.on("SIGINT", encerrar);
   process.on("SIGTERM", encerrar);
 }
+
+
+

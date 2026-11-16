@@ -1,5 +1,17 @@
 # Decisões do projeto
 
+## Update v2 (autenticação, usuários e banco de dados)
+- Motivação: permitir múltiplos usuários com papéis (editor/leitor) e persistência de usuários/sessões em banco, saindo do modelo de "um único usuário local" do v1.
+- Banco: **SQLite** (`data/vca.db`) via `better-sqlite3` — arquivo único, zero-config, sem servidor separado, ideal para software local offline. Campanhas continuam em JSON (`data/campanhas/`) por simplicidade e histórico de versões.
+- Autenticação: `express-session` + cookie HTTP-only + `bcrypt` para hash de senha. Papéis: `editor` (cria/edita/exclui campanhas próprias) e `leitor` (apenas visualiza).
+- Roteamento: `/login` quando não autenticado; `/` (home) e `/editor` exigem sessão válida.
+- Primeiro usuário: `POST /api/auth/usuarios` só aceita cadastro quando não há sessão ativa (para criar o primeiro admin sem login prévio).
+- Campanhas ganharam campo `usuarioId` (vinculação ao dono). Leitores veem apenas campanhas próprias; editores veem todas (ou só as próprias — decisão pendente).
+- Sessão expira após inatividade; cookie `connect.sid` com `httpOnly`, `sameSite: lax`, `secure: false` (localhost).
+- Novas dependências npm: `better-sqlite3`, `bcrypt`, `express-session` + tipos (`@types/better-sqlite3`, `@types/bcrypt`, `@types/express-session`).
+- `.gitignore` adiciona `data/vca.db` (banco gerado em runtime, não versionado).
+- Testes obrigatórios: hash de senha, login/logout, proteção de rota (401), papel leitor (403 em escrita), cadastro de usuário, vínculo campanha-usuário.
+
 ## Infra
 - Node.js 22 LTS instalado na máquina (o projeto exige Node 20+; nenhuma versão do Node estava presente).
 - Puppeteer com Chromium próprio do pacote (canal padrão); Poppler só como utilitário de dev (fora do app).

@@ -19,6 +19,7 @@ function carregarCatalogos(): Catalogos {
 const campanhaSeed = CampanhaSchema.parse({
   versao: 1,
   id: "teste",
+  usuarioId: "admin",
   titulo: "Parcelamento Matriz - BLACK FRIDAY",
   mes: "NOVEMBRO",
   paginas: [

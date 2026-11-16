@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { mkdtempSync, mkdirSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,10 +21,42 @@ const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 // o exportador resolve /logos e /assets pela URL real do servidor
 app.locals.urlBase = base;
 
+// Cookie para autenticação (v2)
+let tokenExport: string | null = null;
+
+async function fazerLoginExport(): Promise<void> {
+  const r = await fetch(`${base}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "admin@vca.com", senha: "admin123" }),
+  });
+  if (r.status !== 200) throw new Error(`login falhou: ${r.status}`);
+  const json = await r.json() as { token?: string };
+  if (json.token) tokenExport = json.token;
+}
+
+async function fetchAuth(caminho: string, opts?: RequestInit): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (tokenExport) headers["cookie"] = `connect.sid=${tokenExport}`;
+  if (opts?.headers) Object.assign(headers, opts.headers as Record<string, string>);
+  return fetch(`${base}${caminho}`, { ...opts, headers });
+}
+
+// cadastra primeiro usuário e faz login antes dos testes
+beforeAll(async () => {
+  await fetch(`${base}/api/auth/usuarios`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ nome: "Admin", email: "admin@vca.com", senha: "admin123", papel: "editor" }),
+  }).catch(() => {}); // ignora se já existe
+  await fazerLoginExport();
+});
+
 // campanha com 4 páginas (como o seed)
 const campanha = () => ({
   versao: 1,
   id: "exporta",
+  usuarioId: "admin",
   titulo: "Parcelamento Matriz - Teste",
   mes: "NOVEMBRO",
   paginas: Array.from({ length: 4 }, (_, i) => ({
@@ -61,7 +93,7 @@ function contarPaginasPdf(pdf: Buffer): number {
 
 describe("exportação", () => {
   it("PDF tem uma página por página da campanha (4)", { timeout: 60000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=pdf`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("pdf");
     const pdf = Buffer.from(await r.arrayBuffer());
@@ -72,7 +104,7 @@ describe("exportação", () => {
   });
 
   it("PNG de uma página", { timeout: 60000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=png&pagina=2`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&pagina=2`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("png");
     const png = Buffer.from(await r.arrayBuffer());
@@ -84,12 +116,12 @@ describe("exportação", () => {
   });
 
   it("PNG de página inexistente responde 404", { timeout: 60000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=png&pagina=9`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&pagina=9`, { method: "POST" });
     expect(r.status).toBe(404);
   });
 
   it("PDF comprimido: 4 páginas rasterizadas, PDF válido", { timeout: 90000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=pdf&qualidade=comprimida`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf&qualidade=comprimida`, { method: "POST" });
     expect(r.status).toBe(200);
     const pdf = Buffer.from(await r.arrayBuffer());
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
@@ -97,7 +129,7 @@ describe("exportação", () => {
   });
 
   it("PNG comprimido: mesma página em resolução 1× (menor)", { timeout: 90000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=png&qualidade=comprimida&pagina=1`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&qualidade=comprimida&pagina=1`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("png");
     const png = Buffer.from(await r.arrayBuffer());
@@ -107,7 +139,7 @@ describe("exportação", () => {
   });
 
   it("PDF de uma página só (vetorial)", { timeout: 90000 }, async () => {
-    const r = await fetch(`${base}/api/campanhas/exporta/exportar?formato=pdf&pagina=3`, { method: "POST" });
+    const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf&pagina=3`, { method: "POST" });
     expect(r.status).toBe(200);
     const pdf = Buffer.from(await r.arrayBuffer());
     expect(contarPaginasPdf(pdf)).toBe(1);

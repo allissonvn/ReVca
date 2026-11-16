@@ -8,6 +8,7 @@ import {
 const campanhaValida = () => ({
   versao: 1,
   id: "teste",
+  usuarioId: "admin",
   titulo: "Parcelamento Matriz",
   mes: "NOVEMBRO",
   paginas: [

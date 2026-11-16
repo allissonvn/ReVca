@@ -103,6 +103,7 @@ export function migrarProto(dados: unknown): Campanha {
   return CampanhaSchema.parse({
     versao: 1,
     id: `migrada-${randomUUID().slice(0, 8)}`,
+    usuarioId: "migrado",
     titulo: proto.campanha.titulo,
     mes: proto.campanha.mes,
     paginas,

@@ -32,9 +32,9 @@ describe("campanha gerada do PDF de referência", () => {
   });
 
   it("usa apenas empreendimentos presentes no catálogo", () => {
-    const cat = JSON.parse(readFileSync(join("data", "catalogos", "empreendimentos.json"), "utf8"));
+    const cat = JSON.parse(readFileSync(join("data", "catalogos", "empreendimentos.json"), "utf8")) as { id: string }[];
     const idsCatalogo = new Set(cat.map((e) => e.id));
-    const idsCampanha = new Set(campanha.paginas.flatMap((p) => p.cartoes).map((c) => c.empreendimentoId));
+    const idsCampanha = new Set(campanha.paginas.flatMap((p) => p.cartoes).map((c) => c.empreendimentoId).filter((id): id is string => id !== null));
     for (const id of idsCampanha) expect(idsCatalogo.has(id)).toBe(true);
   });
 });

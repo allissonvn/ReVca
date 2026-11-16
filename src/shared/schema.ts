@@ -52,6 +52,8 @@ export type Pagina = z.infer<typeof PaginaSchema>;
 export const CampanhaSchema = z.object({
   versao: z.literal(1),
   id: z.string().min(1),
+  // Usuário que criou a campanha (só ele pode editar/excluir)
+  usuarioId: z.string().min(1),
   titulo: z.string(),
   mes: MesSchema,
   rodape: z.string().optional(),
@@ -120,4 +122,55 @@ export function parseCampanha(data: unknown): Campanha {
 export function erroCampanha(data: unknown): string | null {
   const r = CampanhaSchema.safeParse(data);
   return r.success ? null : r.error.message;
+}
+
+// ---- Autenticação (v2) ----
+
+export const PapelSchema = z.enum(["editor", "leitor"]);
+export type Papel = z.infer<typeof PapelSchema>;
+
+export const UsuarioSchema = z.object({
+  id: z.string().min(1),
+  nome: z.string().min(1),
+  email: z.string().email(),
+  senhaHash: z.string().min(1),
+  papel: PapelSchema,
+  ativo: z.boolean(),
+  criadoEm: z.string(),
+});
+export type Usuario = z.infer<typeof UsuarioSchema>;
+
+export const SessaoSchema = z.object({
+  id: z.string().min(1),
+  usuarioId: z.string().min(1),
+  token: z.string().min(1),
+  expiraEm: z.string(),
+});
+export type Sessao = z.infer<typeof SessaoSchema>;
+
+export const LoginSchema = z.object({
+  email: z.string().email(),
+  senha: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof LoginSchema>;
+
+export const CriarUsuarioSchema = z.object({
+  nome: z.string().min(1),
+  email: z.string().email(),
+  senha: z.string().min(6),
+  papel: PapelSchema.default("editor"),
+});
+export type CriarUsuarioInput = z.infer<typeof CriarUsuarioSchema>;
+
+export const UsuarioResumoSchema = z.object({
+  id: z.string().min(1),
+  nome: z.string().min(1),
+  email: z.string().email(),
+  papel: PapelSchema,
+  ativo: z.boolean(),
+});
+export type UsuarioResumo = z.infer<typeof UsuarioResumoSchema>;
+
+export function usuarioParaResumo(u: Usuario): UsuarioResumo {
+  return { id: u.id, nome: u.nome, email: u.email, papel: u.papel, ativo: u.ativo };
 }

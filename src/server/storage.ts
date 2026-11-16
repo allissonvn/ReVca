@@ -22,12 +22,14 @@ export function sanitizarId(id: string): string {
 
 export type Storage = {
   campanhasDir: string;
-  listar: () => { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number }[];
+  listar: (usuarioId?: string, papel?: string) => { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number }[];
   ler: (id: string) => Campanha;
   criar: (campanha: Campanha) => Campanha;
   gravar: (campanha: Campanha) => Campanha;
   duplicarParaLixeira: (id: string) => void;
   historicoCount: (id: string) => number;
+  /** Verifica se o usuário é dono da campanha (ou o usuário é admin/editor global). */
+  podeEditar: (usuarioId: string | null, papel: string | undefined, campanha: Campanha) => boolean;
 };
 
 export function criarStorage(raizDados: string): Storage {
@@ -68,12 +70,14 @@ export function criarStorage(raizDados: string): Storage {
 
   const storage: Storage = {
     campanhasDir,
-    listar: () => {
+    listar: (usuarioId, papel) => {
       return readdirSync(campanhasDir)
         .filter((f) => f.endsWith(".json"))
         .map((f) => {
           try {
             const c = CampanhaSchema.parse(JSON.parse(readFileSync(join(campanhasDir, f), "utf8")));
+            // leitor só vê campanhas próprias; editor vê todas
+            if (papel === "leitor" && usuarioId && c.usuarioId !== usuarioId) return null;
             return { id: c.id, titulo: c.titulo, mes: c.mes, atualizadoEm: c.atualizadoEm, nPaginas: c.paginas.length };
           } catch {
             return null; // arquivo corrompido não derruba a listagem
@@ -115,6 +119,12 @@ export function criarStorage(raizDados: string): Storage {
       const dir = caminhoHistorico(id);
       if (!existsSync(dir)) return 0;
       return readdirSync(dir).filter((f) => f.endsWith(".json")).length;
+    },
+    podeEditar: (usuarioId, papel, campanha) => {
+      // editor pode editar qualquer campanha; leitor só a própria
+      if (papel === "editor") return true;
+      if (!usuarioId) return false;
+      return campanha.usuarioId === usuarioId;
     },
   };
   return storage;
