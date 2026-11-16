@@ -3,8 +3,7 @@ import type { JSX } from "react";
 // centro, propriedades à direita, barra superior com status de salvamento.
 import { useEffect, useState } from "react";
 import { lerCampanha, lerCatalogos, criarCampanha } from "../api.js";
-import { salvarAgora, estado, useEstado, alternarTema, notificarConteudo, marcarSujo } from "../store.js";
-import { Canvas } from "../componentes/Canvas.js";
+import { salvarAgora, estado, useEstado, alternarTema, notificarConteudo, marcarSujo } from "../store.js";import { Canvas } from "../componentes/Canvas.js";
 import { PainelPaginas } from "../componentes/PainelPaginas.js";
 import { PainelPropriedades } from "../componentes/PainelPropriedades.js";
 import { ModalExportar } from "../componentes/ModalExportar.js";
@@ -15,6 +14,8 @@ export function Editor({ id }: { id: string }): JSX.Element {
   const [erro, setErro] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [statusExport, setStatusExport] = useState("");
+  // páginas com estouro (id → altura), medido pelo canvas
+  const [estouros, setEstouros] = useState(new Map<string, number>());
 
   useEffect(() => {
     void (async () => {
@@ -86,8 +87,8 @@ export function Editor({ id }: { id: string }): JSX.Element {
       {statusExport !== "" && <div className="faixa-export" role="status">{statusExport}</div>}
 
       <div className="editor-corpo">
-        <PainelPaginas />
-        <Canvas />
+        <PainelPaginas estouros={estouros} />
+        <Canvas aoEstouro={setEstouros} />
         <PainelPropriedades onDuplicar={() => void duplicar()} />
       </div>
 

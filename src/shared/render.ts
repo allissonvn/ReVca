@@ -59,6 +59,9 @@ export function artCss(): string {
 .bloco-col{display:flex;flex-direction:column;align-items:center;gap:${L.GAP_CHIP}px;min-width:0}
 .chip{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;padding:${L.CHIP.paddingY}px ${L.CHIP.paddingX}px;font-weight:700;font-size:calc(${L.CHIP.fonte}px * var(--esc));line-height:${L.CHIP.linha};text-align:center}
 .chip-titulo{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;font-weight:700;text-align:center;font-size:calc(${L.CHIP_TITULO.fonte}px * var(--esc));padding:${L.CHIP_TITULO.paddingY}px ${L.CHIP_TITULO.paddingX}px}
+/* o que o usuário digita é o que aparece: espaços internos preservados e
+   palavras longas quebram em vez de estourar o chip (AGENTS.md §5) */
+.chip,.chip-titulo{white-space:pre-wrap;overflow-wrap:anywhere}
 .chip-titulo.vermelho{color:${L.CORES.vermelho};font-size:calc(${L.CHIP_TITULO_VERMELHO.fonte}px * var(--esc));padding:${L.CHIP_TITULO_VERMELHO.paddingY}px ${L.CHIP_TITULO_VERMELHO.paddingX}px}
 .cor-azul{color:${L.CORES.azul}}
 .cor-vermelho{color:${L.CORES.vermelho}}
@@ -219,12 +222,13 @@ ${cols}
 function renderBloco(bloco: BlocoAtivo): string {
   const largura = bloco.largura === 2 ? "100%" : "50%";
   const tituloChip = bloco.titulo.trim().length > 0
-    ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo)}</div>`
+    ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo.trim())}</div>`
     : "";
   const chips = bloco.texto
     .split("\n")
+    // espaços das pontas não afetam um chip centralizado; os internos são preservados (pre-wrap)
     .filter((l) => l.trim().length > 0)
-    .map((l) => `<div class="chip">${renderLinha(l)}</div>`)
+    .map((l) => `<div class="chip">${renderLinha(l.trim())}</div>`)
     .join("\n");
   return `<div class="bloco-col" style="width:${largura}" data-bloco="${escapeHtml(bloco.id)}">
 ${tituloChip}

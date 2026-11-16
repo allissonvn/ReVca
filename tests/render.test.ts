@@ -192,6 +192,25 @@ describe("renderCampanha", () => {
     expect(html).toContain("--logo:42px");
   });
 
+  it("chips preservam espaços internos (pre-wrap) e quebram palavras longas", () => {
+    // o HTML guarda os espaços; o CSS (pre-wrap) garante que apareçam na arte
+    expect(artCss()).toContain("white-space:pre-wrap");
+    expect(artCss()).toContain("overflow-wrap:anywhere");
+    const c = JSON.parse(JSON.stringify(campanhaSeed));
+    const bloco = (c.paginas[0] as any).cartoes[0].blocos[0];
+    bloco.texto = "Sinal   de   R$ 3.000,00";
+    const html2 = renderCampanha(CampanhaSchema.parse(c), carregarCatalogos());
+    expect(html2).toContain("Sinal   de   R$ 3.000,00");
+  });
+
+  it("espaços das pontas do chip são aparados (não descentralizam a arte)", () => {
+    const c = JSON.parse(JSON.stringify(campanhaSeed));
+    const bloco = (c.paginas[0] as any).cartoes[0].blocos[0];
+    bloco.texto = "   Sinal de R$ 3.000,00   ";
+    const html2 = renderCampanha(CampanhaSchema.parse(c), carregarCatalogos());
+    expect(html2).toContain('<div class="chip">Sinal de R$ 3.000,00</div>');
+  });
+
   it("rodapé opcional aparece quando preenchido", () => {
     const c = JSON.parse(JSON.stringify(campanhaSeed));
     c.rodape = "Válido até 30/11";

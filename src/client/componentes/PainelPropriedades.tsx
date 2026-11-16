@@ -1,6 +1,7 @@
-import type { JSX } from "react";
 // Painel direito: propriedades da campanha, da página e dos cartões/blocos.
 // A digitação usa CampoCor nos campos coloráveis; o resto é onChange direto.
+import { useState } from "react";
+import type { DragEvent, JSX } from "react";
 import { Bloco, Cartao, Pagina } from "../../shared/schema.js";
 import { BlocoSchema, CartaoSchema, PaginaSchema } from "../../shared/schema.js";
 import { empreendimentoDe, modeloDe, tipoBlocoDe, estado, useEstado, marcarSujo } from "../store.js";
@@ -75,8 +76,19 @@ function SecaoPagina({ pag }: { pag: Pagina }): JSX.Element | null {
 
 function SecaoCartao({ car, ci, faixaPorCartao }: { car: Cartao; ci: number; faixaPorCartao: boolean }): JSX.Element | null {
   const e = useEstado();
+  const [bloDe, setBloDe] = useState<number | null>(null);
+  const [bloSobre, setBloSobre] = useState<number | null>(null);
   if (!e.catalogos) return null;
   const emp = empreendimentoDe(car.empreendimentoId);
+
+  /** Solta o bloco arrastado no índice j. */
+  function soltarBloco(j: number): void {
+    if (bloDe === null || bloDe === j) { setBloDe(null); setBloSobre(null); return; }
+    const [movido] = car.blocos.splice(bloDe, 1);
+    car.blocos.splice(j, 0, movido as Bloco);
+    setBloDe(null); setBloSobre(null);
+    marcarSujo();
+  }
 
   return (
     <section className="cartao-props">
@@ -123,7 +135,18 @@ function SecaoCartao({ car, ci, faixaPorCartao }: { car: Cartao; ci: number; fai
         </label>
       </div>
 
-      {car.blocos.map((b, bi) => <EditorBloco key={b.id} b={b} ci={ci} bi={bi} />)}
+      {car.blocos.map((b, bi) => (
+        <EditorBloco
+          key={b.id} b={b} ci={ci} bi={bi}
+          arrastando={bloDe === bi}
+          soltarAqui={bloDe !== null && bloSobre === bi && bloDe !== bi}
+          aoArrastarAlca={(ev) => { ev.dataTransfer.setData("text/plain", String(bi)); ev.dataTransfer.effectAllowed = "move"; setBloDe(bi); }}
+          aoPassar={(ev) => { ev.preventDefault(); setBloSobre(bi); }}
+          aoSair={() => setBloSobre((s) => (s === bi ? null : s))}
+          aoSoltar={(ev) => { ev.preventDefault(); soltarBloco(bi); }}
+          aoTerminar={() => { setBloDe(null); setBloSobre(null); }}
+        />
+      ))}
 
       <div className="linha">
         <select data-car={ci} aria-label="Tipo do novo bloco" className="novo-bloco-tipo">
@@ -149,15 +172,40 @@ function SecaoCartao({ car, ci, faixaPorCartao }: { car: Cartao; ci: number; fai
   );
 }
 
-function EditorBloco({ b, ci, bi }: { b: Bloco; ci: number; bi: number }): JSX.Element | null {
+type PropsBloco = {
+  b: Bloco; ci: number; bi: number;
+  arrastando: boolean; soltarAqui: boolean;
+  aoArrastarAlca: (ev: DragEvent) => void;
+  aoPassar: (ev: DragEvent) => void;
+  aoSair: () => void;
+  aoSoltar: (ev: DragEvent) => void;
+  aoTerminar: () => void;
+};
+
+function EditorBloco({ b, ci, bi, arrastando, soltarAqui, aoArrastarAlca, aoPassar, aoSair, aoSoltar, aoTerminar }: PropsBloco): JSX.Element | null {
   const e = useEstado();
   if (!e.catalogos) return null;
   const tipo = tipoBlocoDe(b.tipo);
   const pronto = e.catalogos.titulos.find((t) => t.texto === b.titulo);
 
   return (
-    <div className={`bloco-item${b.ativo ? "" : " desligado"}`}>
+    <div
+      className={`bloco-item${b.ativo ? "" : " desligado"}${arrastando ? " arrastando" : ""}${soltarAqui ? " soltar-aqui" : ""}`}
+      onDragOver={aoPassar}
+      onDragLeave={aoSair}
+      onDrop={aoSoltar}
+    >
       <div className="topo">
+        {/* a alça é quem arrasta: evitar tornar o item todo draggable
+            (quebra a seleção de texto dentro dos campos) */}
+        <span
+          className="alca"
+          draggable
+          onDragStart={aoArrastarAlca}
+          onDragEnd={aoTerminar}
+          title="Arraste para reordenar"
+          aria-label={`Mover bloco ${bi + 1}`}
+        >⠿</span>
         <label className="inline">
           <input type="checkbox" checked={b.ativo} aria-label="Bloco ligado/desligado"
             onChange={(ev) => { b.ativo = ev.target.checked; marcarSujo(); }} />

@@ -1,7 +1,8 @@
-import type { JSX } from "react";
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
-// Escala com transform e avisa quando o conteúdo passa de 1308px.
+// Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
+// visualmente quanto reportando o mapa de estouros ao editor (badges ⚠).
 import { useLayoutEffect, useRef } from "react";
+import type { JSX } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
 import { estado, useEstado, notificarConteudo } from "../store.js";
 
@@ -9,10 +10,16 @@ const LARGURA_PAGINA = 924;
 const ALTURA_PAGINA = 1308;
 const TEM_ESTOURO = ALTURA_PAGINA + 2;
 
-export function Canvas(): JSX.Element {
+type Props = {
+  /** Mapa idDaPágina → altura do conteúdo (páginas com estouro). */
+  aoEstouro?: (estouros: Map<string, number>) => void;
+};
+
+export function Canvas({ aoEstouro }: Props): JSX.Element {
   const e = useEstado();
   const container = useRef<HTMLDivElement>(null);
   const cssInjetado = useRef(false);
+  const ultimoMapa = useRef("");
 
   useLayoutEffect(() => {
     if (!cssInjetado.current) {
@@ -22,9 +29,11 @@ export function Canvas(): JSX.Element {
       cssInjetado.current = true;
     }
     aplicarEscala();
+    // mede o estouro depois que o layout assenta (com a escala aplicada)
+    const id = requestAnimationFrame(medirEstouros);
     const onResize = () => aplicarEscala();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
   });
 
   function aplicarEscala(): void {
@@ -53,42 +62,52 @@ export function Canvas(): JSX.Element {
     return Math.round(max);
   }
 
+  function medirEstouros(): void {
+    const el = container.current;
+    if (!el) return;
+    // recomeça a medição: remove os avisos visuais antigos (inseridos fora do React)
+    el.querySelectorAll(".aviso-estouro").forEach((a) => a.remove());
+    const mapa = new Map<string, number>();
+    el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
+      const conteudo = alturaConteudo(pag);
+      if (conteudo > TEM_ESTOURO) {
+        mapa.set(pag.dataset.pagina ?? "", conteudo);
+        const aviso = document.createElement("div");
+        aviso.className = "aviso-estouro";
+        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de 1308px. O que passar será cortado no PDF.`;
+        pag.closest(".moldura")?.before(aviso);
+      }
+    });
+    // só notifica quando o resultado muda (evita laço de re-render)
+    const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v}`).join("|");
+    if (assinatura !== ultimoMapa.current) {
+      ultimoMapa.current = assinatura;
+      aoEstouro?.(mapa);
+    }
+  }
+
   const { campanha, catalogos } = e;
   if (!campanha || !catalogos) return <main className="canvas" ref={container} />;
 
-  const paginas = estado.verTodas
-    ? campanha.paginas.map((p, i) => ({ p, i }))
-    : campanha.paginas.map((p, i) => ({ p, i })).filter(({ i }) => i === estado.pagSelecionada);
+  const paginas = campanha.paginas
+    .map((p, i) => ({ p, i }))
+    .filter(({ i }) => estado.verTodas || i === estado.pagSelecionada);
 
   return (
     <main className="canvas" ref={container}>
-      {paginas.map(({ p, i }) => {
-        const html = renderCampanha({ ...campanha, paginas: [p] }, catalogos);
-        return (
-          <div className="moldura" key={p.id} onClick={() => { if (estado.pagSelecionada !== i) { estado.pagSelecionada = i; notificarConteudo(); } }}>
-            <div
-              className="escala"
-              // render.ts escapa todo texto do usuário; HTML seguro por construção
-              dangerouslySetInnerHTML={{ __html: html }}
-              ref={(el) => {
-                // mede o estouro depois que o HTML entrou no DOM
-                if (!el) return;
-                const pag = el.querySelector<HTMLElement>(".pagina");
-                if (!pag) return;
-                requestAnimationFrame(() => {
-                  const conteudo = alturaConteudo(pag);
-                  if (conteudo > TEM_ESTOURO) {
-                    const aviso = document.createElement("div");
-                    aviso.className = "aviso-estouro";
-                    aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de 1308px. O que passar será cortado no PDF.`;
-                    pag.before(aviso);
-                  }
-                });
-              }}
-            />
-          </div>
-        );
-      })}
+      {paginas.map(({ p, i }) => (
+        <div
+          className="moldura"
+          key={p.id}
+          onClick={() => { if (estado.pagSelecionada !== i) { estado.pagSelecionada = i; notificarConteudo(); } }}
+        >
+          <div
+            className="escala"
+            // render.ts escapa todo texto do usuário; HTML seguro por construção
+            dangerouslySetInnerHTML={{ __html: renderCampanha({ ...campanha, paginas: [p] }, catalogos) }}
+          />
+        </div>
+      ))}
     </main>
   );
 }

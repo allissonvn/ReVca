@@ -110,25 +110,30 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 .painel-titulo small { font-weight: 400; }
 .pag-lista { display: flex; flex-direction: column; gap: 6px; }
 .pag-item {
-  display: flex; align-items: center; gap: 4px; border: 1px solid var(--borda);
+  display: flex; align-items: stretch; gap: 4px; border: 1px solid var(--borda);
   border-radius: var(--raio); padding: 6px; background: var(--superficie-2);
 }
 .pag-item.atual { border-color: var(--primario); box-shadow: 0 0 0 2px rgb(20 71 255 / 15%); }
+.pag-item.arrastando { opacity: .45; }
+.pag-item.soltar-aqui { border-color: var(--verde); box-shadow: 0 0 0 2px rgb(102 204 0 / 25%); }
 .pag-nome {
-  flex: 1; display: flex; align-items: center; gap: 10px; text-align: left;
+  flex: 1; display: flex; align-items: flex-start; gap: 10px; text-align: left;
   border: 0; background: transparent; color: var(--texto); cursor: pointer; font: inherit; padding: 4px;
   border-radius: 8px; min-width: 0;
 }
 .pag-nome:hover { background: var(--superficie); }
+/* miniatura real da página (mesmo render.ts do canvas/exportador) */
+.pag-mini { display: block; overflow: hidden; border-radius: 3px; box-shadow: 0 0 0 1px var(--borda); flex: none; background: #fff; }
+.pag-mini-escala { display: block; transform-origin: top left; }
+.pag-desc { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 600; font-size: 13px; }
+.pag-desc b { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .pag-num {
-  width: 24px; height: 24px; border-radius: 6px; background: var(--verde); color: #fff;
-  display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none;
+  width: 20px; height: 20px; border-radius: 6px; background: var(--verde); color: #fff;
+  display: grid; place-items: center; font-weight: 700; font-size: 11px; flex: none;
 }
-.pag-desc { display: flex; flex-direction: column; min-width: 0; font-weight: 600; }
-.pag-desc small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pag-acoes { display: flex; flex-direction: column; gap: 2px; }
-.pag-item .pag-acoes { flex-direction: row; }
-.aviso { color: var(--vermelho); }
+.pag-acoes { display: flex; flex-direction: column; gap: 2px; justify-content: flex-start; }
+.pag-item .pag-acoes { flex-direction: column; }
+.aviso { color: var(--vermelho); font-size: 11.5px; }
 .pag-add { display: flex; gap: 8px; }
 
 /* ---------- canvas central ---------- */
@@ -160,9 +165,16 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
   border: 1px dashed var(--borda); border-radius: 8px; padding: 10px;
   display: flex; flex-direction: column; gap: 8px; background: var(--superficie);
 }
+.bloco-item.arrastando { opacity: .45; }
+.bloco-item.soltar-aqui { border-color: var(--verde); box-shadow: 0 0 0 2px rgb(102 204 0 / 25%); }
+.alca {
+  cursor: grab; color: var(--texto-fraco); padding: 0 4px; font-size: 14px;
+  user-select: none; align-self: center;
+}
+.alca:active { cursor: grabbing; }
 .bloco-item.desligado { opacity: .55; }
-.bloco-item .topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.bloco-item .topo label { font-size: 13px; color: var(--texto); }
+.bloco-item .topo { display: flex; align-items: center; gap: 6px; }
+.bloco-item .topo .pag-acoes { margin-left: auto; flex-direction: row; }
 
 /* ---------- campo com cor + paleta ---------- */
 .campo-cor { position: relative; display: flex; gap: 6px; align-items: flex-start; }
