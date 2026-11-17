@@ -21,7 +21,7 @@ Referências na pasta `referencia/`:
 - Testes: Vitest.
 - Não instale outras dependências sem justificar em `DECISOES.md`.
 - Sem Docker no v1.
-- Autenticação: sessão HTTP-only cookie (express-session) + bcrypt para senhas. Papéis: `admin`, `editor` e `leitor` (admin ≠ editor: só o admin gerencia usuários).
+- Autenticação: sessão própria via cookie HTTP-only (sessões persistidas no SQLite) + bcryptjs para senhas. Papéis: `admin`, `editor` e `leitor` (admin ≠ editor: só o admin gerencia usuários). O token de sessão trafega **só** no cookie — nunca na URL, corpo ou headers.
 
 ## 3. Estrutura de pastas
 
@@ -56,10 +56,10 @@ Bloco    { id; tipo: TipoBlocoId; ativo: boolean; largura: 1 | 2;
 ```
 
 - `mes` é um dos 12 meses em maiúsculas. `titulo` da campanha vale para o PDF inteiro.
-- `usuarioId` vincula a campanha ao usuário que a criou (só ele pode editar/excluir; `leitor` só visualiza).
+- `usuarioId` vincula a campanha ao usuário que a criou — definido pelo servidor na criação; o PUT ignora o `usuarioId` do corpo (não dá para trocar o dono). Todos os usuários autenticados visualizam todas as campanhas; criar/editar/excluir é papel de `admin`/`editor`.
 - Validação com Zod em `src/shared/schema.ts`. Todo arquivo lido do disco ou recebido pela API passa pelo schema.
 - `versao` existe para migrações futuras. `revisao` sobe a cada gravação (controle de concorrência).
-- Senhas são armazenadas com hash bcrypt (never plain text).
+- Senhas são armazenadas com hash bcryptjs (never plain text).
 
 ### Catálogos (JSON editado à mão pelo dono; sem tela de edição no v1)
 
@@ -183,7 +183,7 @@ O protótipo é um único HTML. Ao portar, corrija:
 
 ## 13. Suposições (anote em DECISOES.md se mudar alguma)
 
-1. A stack é Node/TypeScript/Express com HTML estático e JSON em arquivos (software local, sem banco).
+1. A stack é Node/TypeScript/Express (software local). Campanhas em JSON em arquivos; usuários e sessões em SQLite (`data/vca.db`). Cliente em React.
 2. Um único usuário por vez é o caso normal; mais de um editando a mesma campanha é raro e tratado só por `revisao` + 409.
 3. Célula solitária de largura 1 fica à esquerda.
 4. O catálogo é editado à mão pelo dono do projeto.

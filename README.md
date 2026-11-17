@@ -23,10 +23,16 @@ Aplicativo **local** para montar e editar o PDF mensal "Parcelamento Matriz" (co
 
 ## Dados
 
-- Tudo fica em arquivos JSON na pasta `data/` (sem banco de dados).
+- **Campanhas** ficam em arquivos JSON na pasta `data/campanhas/`; **usuários e sessões** ficam em SQLite (`data/vca.db`).
+- Login por e-mail/senha com papel (`admin`, `editor` ou `leitor`); a sessão fica em cookie e dura 7 dias. O primeiro acesso cadastra o administrador.
+- O `leitor` visualiza todas as campanhas e exporta, mas não edita (a interface esconde os campos de edição).
 - A cada gravação, a versão anterior vai para `data/historico/` (20 mais recentes).
 - Excluir campanha move para `data/lixeira/` (não apaga).
 - Catálogos (empreendimentos, títulos prontos, modelos) ficam em `data/catalogos/` e podem ser editados à mão.
+
+## Compartilhando o projeto
+
+- **Não** envie o `data/vca.db` no zip (tem os hashes das senhas) nem o `node_modules` (binários compilados para o seu sistema). Envie o projeto sem esses itens; quem receber roda `npm install` no destino.
 
 ## Para quem desenvolve
 
@@ -40,7 +46,7 @@ npm run typecheck  # tsc --noEmit
 npm run seed       # cria uma campanha de exemplo em data/campanhas/
 ```
 
-- Stack: Node 20+, TypeScript strict, Express, Zod, esbuild, Puppeteer (exportação), Vitest. Sem banco, sem framework front-end.
+- Stack: Node 20+, TypeScript strict, Express, Zod, React 19 (esbuild), SQLite (usuários/sessões), bcryptjs (senhas), Puppeteer (exportação), Vitest. Sem framework de componentes no cliente.
 - A arte (layout das páginas) vive **só** em `src/shared/render.ts` — usada pela prévia do editor e pelo exportador.
 - `HOST` e `PORT` podem ser trocados por variáveis de ambiente (padrão `127.0.0.1:8080`).
 - Decisões de projeto em `DECISOES.md`; especificação completa em `AGENTS.md`.

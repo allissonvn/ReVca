@@ -29,8 +29,8 @@ export type Storage = {
   gravar: (campanha: Campanha) => Campanha;
   duplicarParaLixeira: (id: string) => void;
   historicoCount: (id: string) => number;
-  /** Verifica se o usuário é dono da campanha (ou o usuário é admin/editor global). */
-  podeEditar: (usuarioId: string | null, papel: string | undefined, campanha: Campanha) => boolean;
+  /** Verifica se o papel pode criar/editar/excluir campanhas (admin e editor). */
+  podeEditar: (papel: string | undefined) => boolean;
 };
 
 export function criarStorage(raizDados: string): Storage {
@@ -119,11 +119,10 @@ export function criarStorage(raizDados: string): Storage {
       if (!existsSync(dir)) return 0;
       return readdirSync(dir).filter((f) => f.endsWith(".json")).length;
     },
-    podeEditar: (usuarioId, papel, campanha) => {
-      // admin/editor editam qualquer campanha; leitor só a própria
-      if (papel === "editor" || papel === "admin") return true;
-      if (!usuarioId) return false;
-      return campanha.usuarioId === usuarioId;
+    podeEditar: (papel) => {
+      // admin e editor editam qualquer campanha; leitor não edita (a rota
+      // de escrita já é bloqueada pelo requerEditor antes de chegar aqui)
+      return papel === "editor" || papel === "admin";
     },
   };
   return storage;

@@ -20,18 +20,14 @@ const server: Server = await new Promise((pronto) => {
 });
 const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 
-// Token de sessão (mantido entre requisições via header Authorization: Bearer)
+// Token de sessão (mantido entre requisições via cookie connect.sid)
 let tokenSessao: string | undefined;
 
 async function req(metodo: string, caminho: string, corpo?: unknown): Promise<{ status: number; json: unknown; texto: string }> {
   const headers: Record<string, string> = {};
   if (corpo !== undefined) headers["content-type"] = "application/json";
-  let url = base + caminho;
-  if (tokenSessao) {
-    const sep = caminho.includes("?") ? "&" : "?";
-    url += `${sep}token=${encodeURIComponent(tokenSessao)}`;
-  }
-  const r = await fetch(url, {
+  if (tokenSessao) headers["cookie"] = `connect.sid=${tokenSessao}`;
+  const r = await fetch(base + caminho, {
     method: metodo,
     headers,
     body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
@@ -42,13 +38,18 @@ async function req(metodo: string, caminho: string, corpo?: unknown): Promise<{ 
   return { status: r.status, json, texto };
 }
 
-/** Faz login e armazena o token na variável tokenSessao. */
+/** Faz login e armazena o token do cookie de sessão. */
 async function fazerLogin(email: string = "admin@vca.com", senha: string = "admin123"): Promise<string> {
-  const r = await req("POST", "/api/auth/login", { email, senha });
-  if (r.status !== 200) throw new Error(`login falhou: ${r.status} ${r.texto}`);
-  const body = r.json as { token?: string } | null;
-  const token = body?.token;
-  if (!token) throw new Error("token não retornado pelo login: " + r.texto);
+  const r = await fetch(base + "/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, senha }),
+  });
+  if (r.status !== 200) throw new Error(`login falhou: ${r.status} ${await r.text()}`);
+  // token só vem no cookie HTTP-only
+  const cookie = r.headers.get("set-cookie") ?? "";
+  const token = cookie.split(";")[0]?.split("=")[1];
+  if (!token) throw new Error("cookie de sessão não retornado pelo login");
   tokenSessao = token;
   return token;
 }
@@ -356,9 +357,9 @@ describe("API de campanhas (com autenticação)", () => {
   });
 
   it("PUT com corpo quebrado responde 400", async () => {
-    const r = await fetch(base + "/api/campanhas/qualquer?token=" + encodeURIComponent(tokenSessao ?? ""), {
+    const r = await fetch(base + "/api/campanhas/qualquer", {
       method: "PUT",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", cookie: `connect.sid=${tokenSessao ?? ""}` },
       body: "{ não é json }",
     });
     expect(r.status).toBe(400);
@@ -406,7 +407,7 @@ describe("API de campanhas (com autenticação)", () => {
   it("GET /render/:id devolve HTML com as páginas", async () => {
     const storage = criarStorage(raizDados);
     storage.criar({ ...campanhaTeste(), id: "render" } as never);
-    const r = await fetch(base + "/render/render?token=" + encodeURIComponent(tokenSessao ?? ""));
+    const r = await fetch(base + "/render/render", { headers: { cookie: `connect.sid=${tokenSessao ?? ""}` } });
     const html = await r.text();
     expect(r.status).toBe(200);
     expect(html).toContain('<div class="pagina"');
@@ -415,5 +416,92 @@ describe("API de campanhas (com autenticação)", () => {
   it("campanha desconhecida responde 404", async () => {
     expect((await req("GET", "/api/campanhas/nada")).status).toBe(404);
     expect((await req("DELETE", "/api/campanhas/nada")).status).toBe(404);
+  });
+
+  it("PUT não aceita trocar o dono da campanha (usuarioId vem do disco)", async () => {
+    const storage = criarStorage(raizDados);
+    storage.criar({ ...campanhaTeste(), id: "dono" } as never);
+    await fazerLogin();
+    const atual = await req("GET", "/api/campanhas/dono");
+    const corpo = { ...(atual.json as object), usuarioId: "invasor", titulo: "Trocado?" };
+    const resp = await req("PUT", "/api/campanhas/dono", corpo);
+    expect(resp.status).toBe(200);
+    const depois = await req("GET", "/api/campanhas/dono");
+    expect((depois.json as { usuarioId: string }).usuarioId).not.toBe("invasor");
+  });
+});
+
+describe("Segurança do login e da sessão", () => {
+  it("login devolve o token só no cookie (nunca no corpo nem em header)", async () => {
+    const r = await fetch(base + "/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "admin@vca.com", senha: "admin123" }),
+    });
+    expect(r.status).toBe(200);
+    const json = await r.json() as Record<string, unknown>;
+    expect(json.token).toBeUndefined();
+    expect(r.headers.get("x-auth-token")).toBeNull();
+    const cookie = r.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain("connect.sid=");
+    expect(cookie).toContain("HttpOnly");
+    // Max-Age é em segundos: 7 dias = 604800 (não milissegundos)
+    expect(cookie).toContain("Max-Age=604800");
+  });
+
+  it("token via ?token= ou Authorization: Bearer não é aceito", async () => {
+    const token = await fazerLogin();
+    const r1 = await fetch(base + "/api/auth/me?token=" + encodeURIComponent(token));
+    expect(r1.status).toBe(401);
+    const r2 = await fetch(base + "/api/auth/me", { headers: { authorization: `Bearer ${token}` } });
+    expect(r2.status).toBe(401);
+  });
+
+  it("sessão é validada pelo SQLite (nova instância do servidor reconhece)", async () => {
+    const token = await fazerLogin();
+    // nova instância com o mesmo diretório de dados: se as sessões estivessem
+    // só em memória (Map da instância anterior), ela não reconheceria o token
+    const s2: Server = await new Promise((pronto) => {
+      const s = criarApp({ raizDados }).listen(0, "127.0.0.1", () => pronto(s));
+    });
+    const base2 = `http://127.0.0.1:${(s2.address() as { port: number }).port}`;
+    const r = await fetch(base2 + "/api/auth/me", { headers: { cookie: `connect.sid=${token}` } });
+    expect(r.status).toBe(200);
+    await new Promise((pronto) => s2.close(pronto));
+  });
+
+  it("bloqueia login após 5 tentativas erradas (429)", async () => {
+    // usuário dedicado: o bloqueio não atrapalha os outros testes
+    await fazerLogin();
+    await req("POST", "/api/auth/usuarios", {
+      nome: "Bloqueado", email: "bloqueado@vca.com", senha: "bloqueado123", papel: "leitor",
+    });
+    for (let i = 0; i < 5; i++) {
+      await req("POST", "/api/auth/login", { email: "bloqueado@vca.com", senha: "errada" });
+    }
+    // mesmo com a senha certa, segue bloqueado
+    const r = await req("POST", "/api/auth/login", { email: "bloqueado@vca.com", senha: "bloqueado123" });
+    expect(r.status).toBe(429);
+  });
+
+  it("bootstrap do primeiro usuário é bloqueado com HOST fora do localhost", async () => {
+    const outraRaiz = mkdtempSync(join(tmpdir(), "vca-boot-"));
+    const hostAntigo = process.env.HOST;
+    process.env.HOST = "0.0.0.0";
+    try {
+      const s: Server = await new Promise((pronto) => {
+        const sv = criarApp({ raizDados: outraRaiz }).listen(0, "127.0.0.1", () => pronto(sv));
+      });
+      const base2 = `http://127.0.0.1:${(s.address() as { port: number }).port}`;
+      const r = await fetch(base2 + "/api/auth/usuarios", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nome: "Invasor", email: "invasor@vca.com", senha: "senha123", papel: "admin" }),
+      });
+      expect(r.status).toBe(403);
+      await new Promise((pronto) => s.close(pronto));
+    } finally {
+      process.env.HOST = hostAntigo;
+    }
   });
 });

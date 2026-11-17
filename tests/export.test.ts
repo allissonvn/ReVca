@@ -34,8 +34,11 @@ async function fazerLoginExport(): Promise<void> {
     body: JSON.stringify({ email: "admin@vca.com", senha: "admin123" }),
   });
   if (r.status !== 200) throw new Error(`login falhou: ${r.status}`);
-  const json = await r.json() as { token?: string };
-  if (json.token) tokenExport = json.token;
+  // token só vem no cookie HTTP-only
+  const cookie = r.headers.get("set-cookie") ?? "";
+  const token = cookie.split(";")[0]?.split("=")[1];
+  if (!token) throw new Error("cookie de sessão não retornado pelo login");
+  tokenExport = token;
 }
 
 async function fetchAuth(caminho: string, opts?: RequestInit): Promise<Response> {

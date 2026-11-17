@@ -1,21 +1,22 @@
 # Decisões do projeto
 
 ## Update v2 (autenticação, usuários e banco de dados)
-- Motivação: permitir múltiplos usuários com papéis (editor/leitor) e persistência de usuários/sessões em banco, saindo do modelo de "um único usuário local" do v1.
+- Motivação: permitir múltiplos usuários com papéis e persistência de usuários/sessões em banco, saindo do modelo de "um único usuário local" do v1.
 - Banco: **SQLite** (`data/vca.db`) via `better-sqlite3` — arquivo único, zero-config, sem servidor separado, ideal para software local offline. Campanhas continuam em JSON (`data/campanhas/`) por simplicidade e histórico de versões.
-- Autenticação: `express-session` + cookie HTTP-only + `bcrypt` para hash de senha. Papéis: `editor` (cria/edita/exclui campanhas próprias) e `leitor` (apenas visualiza).
-- Roteamento: `/login` quando não autenticado; `/` (home) e `/editor` exigem sessão válida.
-- Primeiro usuário: `POST /api/auth/usuarios` só aceita cadastro quando não há sessão ativa (para criar o primeiro admin sem login prévio).
-- Campanhas ganharam campo `usuarioId` (vinculação ao dono). Leitores veem apenas campanhas próprias; editores veem todas (ou só as próprias — decisão pendente).
-- Sessão expira após inatividade; cookie `connect.sid` com `httpOnly`, `sameSite: lax`, `secure: false` (localhost).
-- Novas dependências npm: `better-sqlite3`, `bcrypt`, `express-session` + tipos (`@types/better-sqlite3`, `@types/bcrypt`, `@types/express-session`).
-- `.gitignore` adiciona `data/vca.db` (banco gerado em runtime, não versionado).
-- Testes obrigatórios: hash de senha, login/logout, proteção de rota (401), papel leitor (403 em escrita), cadastro de usuário, vínculo campanha-usuário.
+- Autenticação: sessão própria via **cookie HTTP-only `connect.sid`** (sem `express-session` — desnecessário para um app local) + **`bcryptjs`** para hash de senha (o `bcrypt` nativo não compila/roda bem como ESM no Windows do dono; `bcryptjs` é puro e suficiente). O token vive só no cookie — nunca no corpo da resposta, em headers ou na URL.
+- Papéis: `admin` (gerencia usuários + tudo do editor), `editor` (cria/edita/exclui campanhas) e `leitor` (apenas visualiza).
+- Sessões **persistidas na tabela `sessoes`** do SQLite: reiniciar o servidor não desloga ninguém; expiração (7 dias) validada a cada requisição, com limpeza de sessões expiradas no login.
+- Primeiro usuário (bootstrap): `POST /api/auth/usuarios` é aberto enquanto o banco não tem usuários — e força papel `admin`. Só permitido com o servidor em endereço local (HOST de loopback); com `HOST=0.0.0.0`, retorna 403.
+- Campanhas ganharam campo `usuarioId` (vinculação ao dono, sempre definido pelo servidor). Todos os usuários autenticados visualizam todas as campanhas; a escrita é do admin/editor. O `PUT` ignora o `usuarioId` do corpo (dono vem do disco).
+- Cookie: `httpOnly`, `SameSite=Lax`, `Max-Age` em segundos (604800 = 7 dias).
+- Limite de tentativas de login: 5 erros por e-mail bloqueiam 15 minutos (429); acerto zera a contagem.
+- `.gitignore` exclui `data/vca.db*` (banco com hashes de senha, não versionado nem para compartilhar em zip).
+- Testes: hash de senha, login/logout, proteção de rota (401), papéis (403 em escrita), cadastro de usuário, vínculo campanha-usuário, token só no cookie, bloqueio por tentativas, sessão reconhecida por nova instância do servidor.
 
 ## Infra
 - Node.js 22 LTS instalado na máquina (o projeto exige Node 20+; nenhuma versão do Node estava presente).
 - Puppeteer com Chromium próprio do pacote (canal padrão); Poppler só como utilitário de dev (fora do app).
-- Git instalado para versionar as fases (`feat: phase N - <resumo>`).
+- Git instalado para versionar as fases.
 - `.gitignore` também exclui `data/campanhas/` (dados do usuário gerados em runtime); catálogos ficam versionados.
 
 ## Domínio / dados
@@ -38,8 +39,6 @@
 - Notificação de mudança: um único canal — observadores de `estado.ts` (`aoMudar` para conteúdo/prévia, `aoStatus` para o indicador). `marcarSujo` notifica os dois; a prévia se atualiza de forma síncrona a cada tecla, e os badges ⚠ da lista vêm logo depois (registrados após a prévia em `main.ts`).
 - O painel só é reconstruído em mudanças estruturais (ligar/desligar bloco, largura, ordem, modelo); digitação nunca reconstrói — foco preservado. Reconstruções restauram o foco pelo `dataset` do elemento ativo.
 
-
-
 ## Exportação (fase 4)
 - O exportador usa page.setContent (HTML gerado por render.ts), que roda em about:blank: URLs relativas (/logos, /assets/fonts) quebram. Solução: injetar <base href> com a URL do servidor (app.locals.urlBase, definida após listen).
 - Puppeteer 24: setContent não aceita networkidle0 — usa-se domcontentloaded + waitForNetworkIdle({ idleTime: 300 }) + document.fonts.ready.
@@ -52,6 +51,7 @@
 - iniciar.bat/iniciar.sh: instalam dependências só se node_modules faltar, constroem só se dist/server/index.js faltar, abrem o navegador e sobem o servidor. O usuário final não usa terminal.
 - No .bat, npm é invocado com "call" (para o errorlevel voltar ao script); a porta é fixa em 8080, igual ao link aberto no navegador (HOST/PORT por variável de ambiente continuam disponíveis).
 - Teste de clone novo: com dist/ apagado, iniciar.bat reconstruiu e serviu o cliente (/, /api/campanhas 200).
+- Compartilhamento do projeto: **não** enviar o zip com `data/vca.db` (tem hashes de senha) nem com `node_modules` (binários compilados para a plataforma de origem — no destino, rodar `npm install` de novo).
 
 ## Update v1.2 (front-end em React)
 - Motivação: telas mais reativas e familiares para o usuário final (layout estilo Canva: páginas à esquerda, arte ao centro, propriedades à direita). A edição manual de DOM (delegação de eventos + restauração de foco) crescia demais para as novidades de UI.
@@ -63,7 +63,7 @@
 - `npm run dev` implementado: servidor Express + esbuild watch (cliente e servidor; o processo do servidor reinicia quando o bundle dele muda).
 - Lição reforçada: `tests/render.test.ts` usava `data/campanhas/exemplo.json` (mutável pelo usuário) e quebrou quando a campanha foi editada pela interface. Agora o fixture é inline no teste — testes nunca leem dados editáveis.
 - Chips preservam o que o usuário digita: `white-space: pre-wrap` (espaços internos aparecem) + `overflow-wrap: anywhere` (palavra longa quebra em vez de estourar o chip); espaços das pontas são aparados no `render.ts` (não descentralizam um chip centralizado).
-- Miniaturas reais na lista de páginas: HTML do `renderCampanha` memoizado por `JSON.stringify(pag)` — o React só troca o DOM da miniatura quando o conteúdo da página muda (digitar num campo não reconstrui as outras).
+- Miniaturas reais na lista de páginas: HTML do `renderCampanha` memoizado por `JSON.stringify(pag)` — o React só troca o DOM da miniatura quando o conteúdo da página muda (digitar num campo não reconstrói as outras).
 - Reordenação por arrastar-e-soltar (HTML5 DnD, sem dependência): páginas arrastam pelo item inteiro; blocos só pela alça ⠿ (item todo draggable rouba a seleção de texto dos campos). Setas ▲▼ mantidas para teclado/acessibilidade. Ao mover páginas, a seleção acompanha a página movida (pelo `id`).
 - O canvas mede o estouro e reporta o mapa (id → altura) ao Editor via `aoEstouro`; o badge ⚠ da lista passa a mostrar também os px. A comparação por assinatura evita laço de re-render (só notifica quando o mapa muda).
 - Tamanho padrão para logos de empreendimento: caixa fixa de altura `--logo` (por modelo) × largura 1,5× com `object-fit: contain` — logos com proporções muito diferentes (0,70 a 1,40) passam a ocupar o mesmo espaço, sem distorção nem estouro. O placeholder tracejado usa a mesma caixa (o cartão não "pula" ao carregar/trocar a logo).
@@ -80,35 +80,46 @@
 - Exportação detalhada: modal com formato (PDF/PNG) × páginas (todas/só a atual) × qualidade (alta/comprimida). PNG sempre um arquivo por página (o cliente baixa em série quando "todas"). PDF "só a atual" usa `pageRanges`; comprimida rasteriza com pdf-lib.
 - `#paleta-cor` e `#modal-export` precisam de `[hidden] { display: none }` explícito (o `display: flex` da classe sobrepõe o estilo padrão do atributo hidden).
 
-## Update v2 (autentica\u00e7\u00e3o no front-end)
-- Gate de login no cliente: App.tsx consulta /api/auth/me no boot (fase "verificando" evita piscar o formul\u00e1rio) e, sem usu\u00e1rio, renderiza s\u00f3 	elas/Login.tsx. Nenhuma rota nova (sem react-router); o gate \u00e9 um if no App.
-- Sess\u00e3o vive em store.tsx (estado.usuario), junto do resto do estado mut\u00e1vel. deslogar() tamb\u00e9m limpa campanha/cat\u00e1logos para n\u00e3o vazar dados entre sess\u00f5es.
-- 401 centralizado: pi.ts exp\u00f5e definirAoReceber401(fn); o App registra deslogar. Qualquer chamada que receba 401 (sess\u00e3o expirada) devolve ao login sem la\u00e7o de requisi\u00e7\u00f5es.
-- Papel no cliente: ehEditor() esconde a\u00e7\u00f5es de escrita (nova, duplicar, excluir) para leitor; a prote\u00e7\u00e3o real continua no servidor (equerEditor).
-- "Sair" chama POST /api/auth/logout e recarrega a p\u00e1gina (limpa estado local de uma vez).
-- etch usa credentials: "same-origin" em todas as chamadas, para o cookie HttpOnly connect.sid acompanhar tudo.
-- Removido console.log de DEBUG em equerSessao (imprimia token/cookie \u2014 vazamento em log).
+## Update v2 (autenticação no front-end)
+- Gate de login no cliente: App.tsx consulta /api/auth/me no boot (fase "verificando" evita piscar o formulário) e, sem usuário, renderiza só telas/Login.tsx. Nenhuma rota nova (sem react-router); o gate é um if no App.
+- Sessão vive em store.tsx (estado.usuario), junto do resto do estado mutável. deslogar() também limpa campanha/catálogos para não vazar dados entre sessões.
+- 401 centralizado: api.ts expõe definirAoReceber401(fn); o App registra deslogar. Qualquer chamada que receba 401 (sessão expirada) devolve ao login sem laço de requisições.
+- Papel no cliente: podeEditar() esconde ações de escrita (nova, duplicar, excluir) para leitor; a proteção real continua no servidor (requerEditor).
+- "Sair" chama POST /api/auth/logout e recarrega a página (limpa estado local de uma vez).
+- fetch usa credentials: "same-origin" em todas as chamadas, para o cookie HttpOnly connect.sid acompanhar tudo.
+- Removido console.log de DEBUG em requerSessao (imprimia token/cookie — vazamento em log).
 
-## Update v2.1 (papel admin e gestão de usu\u00e1rios)
-- Novo papel **admin** (acima do editor): administra usu\u00e1rios e faz tudo o que o editor faz. Hierarquia: admin > editor > leitor. Editor e admin s\u00e3o diferentes de prop\u00f3sito \u2014 n\u00e3o fundir.
-- PapelSchema = admin | editor | leitor. equerEditor e storage.podeEditar aceitam admin e editor; novo equerAdmin protege a gest\u00e3o de usu\u00e1rios.
-- Migra\u00e7\u00e3o do SQLite: o CHECK antigo n\u00e3o aceitava 'admin' e SQLite n\u00e3o altera CHECK; db.ts recria a tabela quando o CREATE existente n\u00e3o menciona 'admin' e promove o **primeiro** usu\u00e1rio (dono) a admin \u2014 por isso admin@vca.com virou admin sem a\u00e7\u00e3o manual.
-- Bootstrap: POST /api/auth/usuarios sem usu\u00e1rios no banco \u00e9 aberto e força papel admin; depois disso, s\u00f3 admin cadastra (403 para os demais). Formul\u00e1rio do cliente s\u00f3 oferece editor/leitor \u2014 novo admin n\u00e3o se cria pela tela.
+## Update v2.1 (papel admin e gestão de usuários)
+- Novo papel **admin** (acima do editor): administra usuários e faz tudo o que o editor faz. Hierarquia: admin > editor > leitor. Editor e admin são diferentes de propósito — não fundir.
+- PapelSchema = admin | editor | leitor. requerEditor e storage.podeEditar aceitam admin e editor; novo requerAdmin protege a gestão de usuários.
+- Migração do SQLite: o CHECK antigo não aceitava 'admin' e SQLite não altera CHECK; db.ts recria a tabela quando o CREATE existente não menciona 'admin' e promove o **primeiro** usuário (dono) a admin — por isso admin@vca.com virou admin sem ação manual.
+- Bootstrap: POST /api/auth/usuarios sem usuários no banco é aberto e força papel admin; depois disso, só admin cadastra (403 para os demais). Formulário do cliente só oferece editor/leitor — novo admin não se cria pela tela.
 - E-mail duplicado responde 409 (antes deixava estourar o erro bruto do SQLite).
-- Tela 	elas/Usuarios.tsx em /?tela=usuarios: lista com nome/e-mail/papel/situa\u00e7\u00e3o + formul\u00e1rio de cadastro com erros amig\u00e1veis (409/422/403). N\u00e3o-admin que abre a URL cai na home; a prote\u00e7\u00e3o real \u00e9 o middleware no servidor.
-- Bug corrigido de passagem: criarAutenticacao() abria sempre o banco real (data/vca.db) mesmo nos testes \u2014 usu\u00e1rios de teste vazavam para o produ\u00e7\u00e3o (mesma li\u00e7\u00e3o do render.test). Agora recebe aizDados e os testes rodam isolados.
+- Tela telas/Usuarios.tsx em /?tela=usuarios: lista com nome/e-mail/papel/situação + formulário de cadastro com erros amigáveis (409/422/403). Não-admin que abre a URL cai na home; a proteção real é o middleware no servidor.
+- Bug corrigido de passagem: criarAutenticacao() abria sempre o banco real (data/vca.db) mesmo nos testes — usuários de teste vazavam para a produção (mesma lição do render.test). Agora recebe raizDados e os testes rodam isolados.
 
-## Update v2.2 (leitor v\u00ea tudo + ativo/inativo)
-- Bug do leitor: a listagem/leitura de campanhas filtrava por dono quando o papel era leitor \u2014 um leitor novo (sem campanhas pr\u00f3prias) via lista vazia e n\u00e3o conseguia abrir nada. Corre\u00e7\u00e3o: **qualquer usu\u00e1rio autenticado visualiza todas as campanhas** (leitor inclu\u00eddo); a escrita continua bloqueada (requerEditor + 403 no PUT/DELETE). storage.listar() perdeu os par\u00e2metros de filtro.
-- Ativo/inativo: PATCH /api/auth/usuarios/:id (s\u00f3 admin) com { ativo: boolean }. Regras: admin n\u00e3o altera o pr\u00f3prio status (400, evita se trancar fora) e usu\u00e1rio inexistente d\u00e1 404. Login de desativado \u00e9 negado (401) e a sess\u00e3o ativa morre na pr\u00f3xima valida\u00e7\u00e3o (alidarSessao exige ativo = 1). N\u00e3o h\u00e1 exclus\u00e3o de usu\u00e1rio \u2014 desativar substitui apagar (mant\u00e9m hist\u00f3rico de autoria das campanhas).
-- Tela de usu\u00e1rios: coluna "Situa\u00e7\u00e3o" com badge verde/vermelho, bot\u00e3o Ativar/Desativar (desabilitado na linha do pr\u00f3prio admin, marcada "(voc\u00ea)"), linhas inativas esmaecidas.
-- Testes novos: leitor v\uEA todas as campanhas (lista + leitura de campanha alheia), leitor n\u00e3o cria/edita, ciclo completo de desativa\u00e7\u00e3o/reativa\u00e7\u00e3o (sess\u00e3o antiga morre, login negado, volta), autoprote\u00e7\u00e3o do admin (400), 404 e 403.
+## Update v2.2 (leitor vê tudo + ativo/inativo)
+- Bug do leitor: a listagem/leitura de campanhas filtrava por dono quando o papel era leitor — um leitor novo (sem campanhas próprias) via lista vazia e não conseguia abrir nada. Correção: **qualquer usuário autenticado visualiza todas as campanhas** (leitor incluído); a escrita continua bloqueada (requerEditor + 403 no PUT/DELETE). storage.listar() perdeu os parâmetros de filtro.
+- Ativo/inativo: PATCH /api/auth/usuarios/:id (só admin) com { ativo: boolean }. Regras: admin não altera o próprio status (400, evita se trancar fora) e usuário inexistente dá 404. Login de desativado é negado (401) e a sessão ativa morre na próxima validação (validarSessao exige ativo = 1). Não há exclusão de usuário — desativar substitui apagar (mantém histórico de autoria das campanhas).
+- Tela de usuários: coluna "Situação" com badge verde/vermelho, botão Ativar/Desativar (desabilitado na linha do próprio admin, marcada "(você)"), linhas inativas esmaecidas.
+- Testes novos: leitor vê todas as campanhas (lista + leitura de campanha alheia), leitor não cria/edita, ciclo completo de desativação/reativação (sessão antiga morre, login negado, volta), autoproteção do admin (400), 404 e 403.
 
 ## Update v2.3 (leitor no editor: somente leitura visual)
-- O servidor j\u00e1 bloqueava a escrita do leitor (403), mas a interface do editor mostrava todos os campos como edit\u00e1veis \u2014 a edi\u00e7\u00e3o do leitor "ia pro ar" e falhava no autosave. Regra de UI: se n\u00e3o pode gravar, o campo nem aparece edit\u00e1vel.
+- O servidor já bloqueava a escrita do leitor (403), mas a interface do editor mostrava todos os campos como editáveis — a edição do leitor "ia pro ar" e falhava no autosave. Regra de UI: se não pode gravar, o campo nem aparece editável.
 - Modo leitor no Editor (podeEditar() === false):
-  - Coluna da direita (PainelPropriedades) **n\u00e3o renderiza**; grade do editor vira 2 colunas (.editor-corpo.leitor).
-  - Painel de p\u00e1ginas mantido, mas s\u00f3 para **selecionar**: sem subir/descer, duplicar, excluir, arrastar (item deixa de ser draggable) e sem "+ P\u00e1gina". "Ver todas" continua (n\u00e3o altera dados).
-  - T\u00edtulo da topbar eadOnly e m\u00eas disabled.
-  - Exporta\u00e7\u00e3o continua dispon\u00edvel (leitor pode exportar: \u00e9 leitura).
-- Verifica\u00e7\u00e3o automatizada com Puppeteer (temp/verifica-leitor.mjs): admin v\u00EA 3 colunas + a\u00e7\u00f5es; leitor v\u00EA 2 colunas, sem painel/a\u00e7\u00f5es, p\u00e1ginas clic\u00e1veis, exporta\u00e7\u00e3o ativa.
+  - Coluna da direita (PainelPropriedades) **não renderiza**; grade do editor vira 2 colunas (.editor-corpo.leitor).
+  - Painel de páginas mantido, mas só para **selecionar**: sem subir/descer, duplicar, excluir, arrastar (item deixa de ser draggable) e sem "+ Página". "Ver todas" continua (não altera dados).
+  - Título da topbar readOnly e mês disabled.
+  - Exportação continua disponível (leitor pode exportar: é leitura).
+- Verificação automatizada com Puppeteer (temp/verifica-leitor.mjs): admin vê 3 colunas + ações; leitor vê 2 colunas, sem painel/ações, páginas clicáveis, exportação ativa.
+
+## Update v2.4 (revisão de segurança e correção de documentação)
+- **Token só no cookie**: o login não devolve mais token no corpo nem no header `x-auth-token`; `?token=` e `Authorization: Bearer` deixaram de ser aceitos (trocados por cookie `connect.sid` nos testes). Motivo: token em URL/corpo acaba em logs e no histórico do navegador, anulando o cookie HttpOnly.
+- **Max-Age do cookie em segundos** (604800 = 7 dias): antes estava em milissegundos (~19 anos), divergindo da expiração real da sessão no servidor.
+- **Sessões persistidas no SQLite** (tabela `sessoes`, criada desde o v2.1 mas sem uso): reiniciar o servidor não desloga mais ninguém; Map em memória removido. Sessões expiradas são apagadas no login.
+- **Limite de tentativas de login**: 5 erros por e-mail → 429 por 15 minutos (Map em memória por instância de auth; acerto zera).
+- **Bootstrap protegido fora do localhost**: com `HOST=0.0.0.0` (ou outro não-loopback), o cadastro do primeiro usuário responde 403 — em rede aberta, um estranho não pode criar o admin.
+- **PUT não troca o dono**: `usuarioId` do corpo é ignorado e sobrescrito pelo do disco — editor não consegue reatribuir a autoria de uma campanha.
+- **Lógica de permissão simplificada**: `podeVerCampanha` (sempre verdadeiro, com mensagens de "não é dono" enganosas) foi removida — qualquer autenticado visualiza; `storage.podeEditar(papel)` ficou só com a regra real (admin/editor editam; leitor nunca chega à rota de escrita por causa do requerEditor).
+- **Dependências fantasma removidas**: `express-session`, `@types/express-session` e `@types/bcrypt` estavam no package.json sem uso (a sessão é própria e o hash é bcryptjs).
+- **Documentação realinhada**: AGENTS.md, README.md e este arquivo agora descrevem o sistema atual (React no cliente, SQLite para usuários, autenticação e papéis); este arquivo foi regravado em UTF-8 limpo (as seções v2 haviam sido anexadas com encoding quebrado, com códigos de escape literais no lugar dos acentos).
