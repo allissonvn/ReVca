@@ -79,3 +79,12 @@
 - Home nova: grade de cartões com miniatura real da 1ª página (mesmo `render.ts`), busca por título/mês, badge de mês, ações abrir/duplicar/excluir. Cliente lê todas as campanhas de uma vez (poucas, servidor local).
 - Exportação detalhada: modal com formato (PDF/PNG) × páginas (todas/só a atual) × qualidade (alta/comprimida). PNG sempre um arquivo por página (o cliente baixa em série quando "todas"). PDF "só a atual" usa `pageRanges`; comprimida rasteriza com pdf-lib.
 - `#paleta-cor` e `#modal-export` precisam de `[hidden] { display: none }` explícito (o `display: flex` da classe sobrepõe o estilo padrão do atributo hidden).
+
+## Update v2 (autentica\u00e7\u00e3o no front-end)
+- Gate de login no cliente: App.tsx consulta /api/auth/me no boot (fase "verificando" evita piscar o formul\u00e1rio) e, sem usu\u00e1rio, renderiza s\u00f3 	elas/Login.tsx. Nenhuma rota nova (sem react-router); o gate \u00e9 um if no App.
+- Sess\u00e3o vive em store.tsx (estado.usuario), junto do resto do estado mut\u00e1vel. deslogar() tamb\u00e9m limpa campanha/cat\u00e1logos para n\u00e3o vazar dados entre sess\u00f5es.
+- 401 centralizado: pi.ts exp\u00f5e definirAoReceber401(fn); o App registra deslogar. Qualquer chamada que receba 401 (sess\u00e3o expirada) devolve ao login sem la\u00e7o de requisi\u00e7\u00f5es.
+- Papel no cliente: ehEditor() esconde a\u00e7\u00f5es de escrita (nova, duplicar, excluir) para leitor; a prote\u00e7\u00e3o real continua no servidor (equerEditor).
+- "Sair" chama POST /api/auth/logout e recarrega a p\u00e1gina (limpa estado local de uma vez).
+- etch usa credentials: "same-origin" em todas as chamadas, para o cookie HttpOnly connect.sid acompanhar tudo.
+- Removido console.log de DEBUG em equerSessao (imprimia token/cookie \u2014 vazamento em log).
