@@ -30,7 +30,7 @@
       "Condições para o Dona Lys"
     ],
     "faixa": "Linha: Dona",
-    "logo": null
+    "logo": "dona-lys.png"
   },
   {
     "id": "vila-do-servidor",
@@ -38,7 +38,7 @@
       "Condições para a Vila do Servidor"
     ],
     "faixa": "Vila do Servidor",
-    "logo": null
+    "logo": "vila-do-servidor.png"
   },
   {
     "id": "bellator-olivia",
@@ -46,7 +46,7 @@
       "Condições para o Bellator Olivia Residence"
     ],
     "faixa": "Linha: Bellator Residence",
-    "logo": null
+    "logo": "bellator-olivia.png"
   },
   {
     "id": "bellator-residence",
@@ -55,7 +55,7 @@
       "(26/02/2027)"
     ],
     "faixa": "Linha: Bellator Residence",
-    "logo": null
+    "logo": "bellator-residence.png"
   },
   {
     "id": "sculptor-residence",
@@ -63,7 +63,7 @@
       "Condições para o Sculptor Residence"
     ],
     "faixa": "Linha: Premium",
-    "logo": null
+    "logo": "sculptor-residence.png"
   },
   {
     "id": "duque-lavenir",
@@ -71,7 +71,7 @@
       "Condições para Duque Lavenir"
     ],
     "faixa": "Linha: Duque",
-    "logo": null
+    "logo": "duque-lavenir.png"
   },
   {
     "id": "kahakai",
@@ -95,7 +95,7 @@
       "Condições para Dona Miraí Residencial"
     ],
     "faixa": "Linha: Dona Miraí Residencial",
-    "logo": null
+    "logo": "dona-mirai.png"
   },
   {
     "id": "duque-dulest",
@@ -103,7 +103,7 @@
       "Condições para Duque Du'lest"
     ],
     "faixa": "Linha: Duque Du'lest",
-    "logo": null
+    "logo": "duque-dulest.png"
   },
   {
     "id": "verso-residence",
@@ -111,7 +111,7 @@
       "Condições para Verso Residence"
     ],
     "faixa": "Linha: Verso Residence",
-    "logo": null
+    "logo": "verso-residence.png"
   },
   {
     "id": "bem-viver",
@@ -119,7 +119,7 @@
       "Condições para Bem Viver Residencial"
     ],
     "faixa": "Linha: Bem Viver Residencial",
-    "logo": null
+    "logo": "bem-viver.png"
   },
   {
     "id": "du-bem",
@@ -127,7 +127,7 @@
       "Condições para Du Bem Residencial"
     ],
     "faixa": "Linha: Du Bem Residencial",
-    "logo": null
+    "logo": "du-bem.png"
   },
   {
     "id": "baron-1",
@@ -135,7 +135,7 @@
       "Condições para o Baron Connect I (entregue)"
     ],
     "faixa": "Linha: Loteamentos",
-    "logo": "baron-connect.png"
+    "logo": "baron-1.png"
   },
   {
     "id": "baron-2",
@@ -159,7 +159,7 @@
       "Condições para o Amado Residencial"
     ],
     "faixa": "Linha: Loteamentos",
-    "logo": null
+    "logo": "amado-residencial.png"
   },
   {
     "id": "connect-tech-1",
@@ -167,7 +167,7 @@
       "Condições para o Connect Tech I"
     ],
     "faixa": "Linha: Loteamentos",
-    "logo": null
+    "logo": "connect-tech-1.png"
   },
   {
     "id": "bela-morada",
@@ -175,7 +175,7 @@
       "Condições para o Bela Morada (entregue)"
     ],
     "faixa": "Linha: Loteamentos",
-    "logo": null
+    "logo": "bela-morada.png"
   },
   {
     "id": "connect-tech-2",
@@ -183,7 +183,7 @@
       "Condições para o Connect Tech II"
     ],
     "faixa": "Linha: Loteamentos",
-    "logo": null
+    "logo": "connect-tech-2.png"
   },
   {
     "id": "desenvolvimento-leste",
