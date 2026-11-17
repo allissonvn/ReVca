@@ -3,12 +3,14 @@ import type { JSX } from "react";
 // O estado é mutável e único (como antes); o React assina por useSyncExternalStore
 // com um contador de versão: cada notificar() força re-render de quem usa useEstado().
 import { useSyncExternalStore } from "react";
-import { Campanha, Catalogos } from "../shared/schema.js";
+import { Campanha, Catalogos, UsuarioResumo } from "../shared/schema.js";
 import { gravarCampanha } from "./api.js";
 
 export type StatusSalvamento = "salvo" | "salvando" | "erro" | "conflito" | "sujo";
 
 export type Estado = {
+  // usuário autenticado (null = deslogado; controla o gate de login)
+  usuario: UsuarioResumo | null;
   campanha: Campanha | null;
   catalogos: Catalogos | null;
   // página selecionada na prévia (índice) e se mostra todas
@@ -21,6 +23,7 @@ export type Estado = {
 };
 
 export const estado: Estado = {
+  usuario: null,
   campanha: null,
   catalogos: null,
   pagSelecionada: 0,
@@ -48,6 +51,22 @@ export function useEstado(): Estado {
 export function notificar(): void {
   versao++;
   for (const fn of ouvintes) fn();
+}
+
+// ---- sessão ----
+
+/** Limpa o usuário (login expirado ou logout) e volta para a tela de login. */
+export function deslogar(): void {
+  estado.usuario = null;
+  // evita que a home/editor antigos continuem mostrando dados da sessão anterior
+  estado.campanha = null;
+  estado.catalogos = null;
+  notificar();
+}
+
+/** Papel do usuário logado; "leitor" não pode criar/editar/excluir campanhas. */
+export function ehEditor(): boolean {
+  return estado.usuario?.papel === "editor";
 }
 
 // ---- seletores auxiliares ----

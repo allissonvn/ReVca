@@ -4,8 +4,8 @@ import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
 import { Campanha, Catalogos } from "../../shared/schema.js";
-import { CampanhaResumo, listarCampanhas, lerCampanha, lerCatalogos, criarCampanha, excluirCampanha } from "../api.js";
-import { estado, alternarTema, useEstado } from "../store.js";
+import { CampanhaResumo, listarCampanhas, lerCampanha, lerCatalogos, criarCampanha, excluirCampanha, logout } from "../api.js";
+import { estado, alternarTema, useEstado, ehEditor } from "../store.js";
 
 const LARGURA_MINI = 220;
 
@@ -13,6 +13,8 @@ type Item = { resumo: CampanhaResumo; dados: Campanha };
 
 export function Home(): JSX.Element {
   useEstado(); // re-render quando o tema muda
+  // Home só é renderizada com usuário autenticado (gate no App)
+  const editor = ehEditor();
   const [itens, setItens] = useState<Item[] | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState("");
@@ -50,6 +52,12 @@ export function Home(): JSX.Element {
     window.location.href = `/?campanha=${encodeURIComponent(nova.id)}`;
   }
 
+  async function sair(): Promise<void> {
+    await logout();
+    // força recarga completa: limpa estado local e volta ao login
+    window.location.href = "/";
+  }
+
   return (
     <div className="home">
       <header className="topbar">
@@ -66,10 +74,16 @@ export function Home(): JSX.Element {
           onChange={(e) => setBusca(e.target.value)}
         />
         <div className="topbar-acoes">
+          {estado.usuario !== null && (
+            <span className="dica" title={`Conectado como ${estado.usuario.email}`}>
+              {estado.usuario.nome} ({estado.usuario.papel})
+            </span>
+          )}
           <button className="btn fantasma" onClick={alternarTema} title="Alternar tema do painel (a arte é sempre clara)">
             {estado.tema === "escuro" ? "☀ Claro" : "🌙 Escuro"}
           </button>
-          <button className="btn primario" onClick={() => void nova()}>+ Nova campanha</button>
+          {editor && <button className="btn primario" onClick={() => void nova()}>+ Nova campanha</button>}
+          <button className="btn" onClick={() => void sair()} title="Encerrar a sessão">Sair</button>
         </div>
       </header>
 
@@ -77,11 +91,11 @@ export function Home(): JSX.Element {
         {erro !== "" && <p className="dica erro">Erro ao carregar: {erro}</p>}
         {itens === null && !erro && <p className="dica">Carregando…</p>}
         {itens !== null && itens.length === 0 && (
-          <p className="dica">Nenhuma campanha ainda. Clique em “+ Nova campanha”.</p>
+          <p className="dica">{editor ? "Nenhuma campanha ainda. Clique em \u201c+ Nova campanha\u201d." : "Nenhuma campanha ainda."}</p>
         )}
         <div className="grade">
           {filtrados.map(({ resumo: r, dados }) => (
-            <CartaoCampanha key={r.id} resumo={r} dados={dados} catalogos={catalogos} />
+            <CartaoCampanha key={r.id} resumo={r} dados={dados} catalogos={catalogos} editor={editor} />
           ))}
         </div>
       </main>
@@ -89,7 +103,7 @@ export function Home(): JSX.Element {
   );
 }
 
-function CartaoCampanha({ resumo: r, dados, catalogos }: { resumo: CampanhaResumo; dados: Campanha; catalogos: Catalogos | null }): JSX.Element {
+function CartaoCampanha({ resumo: r, dados, catalogos, editor }: { resumo: CampanhaResumo; dados: Campanha; catalogos: Catalogos | null; editor: boolean }): JSX.Element {
   const data = new Date(r.atualizadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
   const escala = LARGURA_MINI / 924;
   const primeira = dados.paginas[0];
@@ -130,8 +144,8 @@ function CartaoCampanha({ resumo: r, dados, catalogos }: { resumo: CampanhaResum
       </div>
       <div className="cam-acoes" onClick={(e) => e.stopPropagation()}>
         <button className="btn pequeno" onClick={() => { window.location.href = `/?campanha=${encodeURIComponent(r.id)}`; }}>Abrir</button>
-        <button className="btn pequeno fantasma" onClick={() => void duplicar()}>Duplicar</button>
-        <button className="btn pequeno perigo" aria-label={`Excluir ${r.titulo}`} onClick={() => void excluir()}>✕</button>
+        {editor && <button className="btn pequeno fantasma" onClick={() => void duplicar()}>Duplicar</button>}
+        {editor && <button className="btn pequeno perigo" aria-label={`Excluir ${r.titulo}`} onClick={() => void excluir()}>✕</button>}
       </div>
     </article>
   );

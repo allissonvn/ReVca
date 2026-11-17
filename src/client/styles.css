@@ -35,6 +35,18 @@ h1, h2, h3 { margin: 0; font-weight: 700; }
 small { color: var(--texto-fraco); }
 fieldset { border: 0; margin: 0 0 12px; padding: 0; }
 
+/* ---------- login ---------- */
+.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.login-caixa {
+  display: flex; flex-direction: column; gap: 8px;
+  width: min(360px, 100%); padding: 28px;
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra);
+}
+.login-caixa .topbar-marca { margin-bottom: 4px; }
+.login-caixa label { font-size: 13px; font-weight: 700; margin-top: 6px; }
+.login-caixa input { width: 100%; }
+.login-caixa .btn { margin-top: 14px; }
+
 /* ---------- botões ---------- */
 .btn {
   border: 1px solid var(--borda); background: var(--superficie); color: var(--texto);

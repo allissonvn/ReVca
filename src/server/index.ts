@@ -78,7 +78,6 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
 
   const requerSessao = (req: ReqComUsuario, res: Response, next: NextFunction): void => {
     const token = lerToken(req);
-    console.log("DEBUG servidor requerSessao: token=", token?.substring(0, 20), "cookies=", req.headers.cookie);
     if (!token) {
       res.status(401).json({ erro: "não autenticado" });
       return;

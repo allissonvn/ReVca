@@ -1,5 +1,5 @@
 // Chamadas à API REST do servidor (AGENTS.md §6).
-import { Campanha, Catalogos } from "../shared/schema.js";
+import { Campanha, Catalogos, UsuarioResumo, LoginInput } from "../shared/schema.js";
 
 export type CampanhaResumo = { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number };
 
@@ -9,15 +9,41 @@ export class ApiErro extends Error {
   }
 }
 
+// Quando qualquer chamada receber 401, a sessão expirou: volta para o login.
+// O App registra a reação aqui (limpa o usuário do estado); sem loop de requests.
+let aoReceber401: (() => void) | null = null;
+
+export function definirAoReceber401(fn: () => void): void {
+  aoReceber401 = fn;
+}
+
 async function chamar(metodo: string, caminho: string, corpo?: unknown): Promise<unknown> {
   const resp = await fetch(caminho, {
     method: metodo,
+    credentials: "same-origin", // envia o cookie de sessão (HttpOnly)
     headers: corpo !== undefined ? { "content-type": "application/json" } : undefined,
     body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
   });
-  if (!resp.ok) throw new ApiErro(resp.status, await resp.json().catch(() => null));
+  if (!resp.ok) {
+    if (resp.status === 401 && aoReceber401 !== null) aoReceber401();
+    throw new ApiErro(resp.status, await resp.json().catch(() => null));
+  }
   if (resp.status === 204) return null;
   return resp.json();
+}
+
+// ---- autenticação ----
+
+export function login(dados: LoginInput): Promise<{ usuario: UsuarioResumo }> {
+  return chamar("POST", "/api/auth/login", dados) as Promise<{ usuario: UsuarioResumo }>;
+}
+
+export function logout(): Promise<null> {
+  return chamar("POST", "/api/auth/logout") as Promise<null>;
+}
+
+export function lerSessao(): Promise<{ usuario: UsuarioResumo }> {
+  return chamar("GET", "/api/auth/me") as Promise<{ usuario: UsuarioResumo }>;
 }
 
 export function listarCampanhas(): Promise<CampanhaResumo[]> {
