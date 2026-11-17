@@ -105,14 +105,14 @@ Parser em `src/shared/markup.ts`, função pura, com testes:
 - `POST /api/auth/login` — autentica usuário (email + senha), cria sessão (cookie HTTP-only).
 - `POST /api/auth/logout` — encerra a sessão.
 - `GET /api/auth/me` — devolve o usuário logado (ou 401 se não autenticado).
-- `POST /api/auth/usuarios` — cadastra novo usuário. Sem usuários no banco, é aberto (bootstrap) e o papel é forçado para `admin`; depois, só o `admin` chama (cria `editor` e `leitor`). `GET /api/auth/usuarios` lista os usuários (só `admin`).
+- `POST /api/auth/usuarios` — cadastra novo usuário. Sem usuários no banco, é aberto (bootstrap) e o papel é forçado para `admin`; depois, só o `admin` chama (cria `editor` e `leitor`). `GET /api/auth/usuarios` lista os usuários (só `admin`); `PATCH /api/auth/usuarios/:id` ativa/desativa (só `admin`; não vale para o próprio admin).
 
 ### Campanhas (exigem autenticação)
 - `GET /api/campanhas` lista campanhas do usuário logado (`id, titulo, mes, atualizadoEm, nPaginas`).
 - `POST /api/campanhas` cria em branco, ou `{ duplicarDe, mes }` para duplicar para outro mês.
 - `GET /api/campanhas/:id` · `DELETE /api/campanhas/:id` (move para lixeira, não apaga).
 - `PUT /api/campanhas/:id` grava. Exige a `revisao` que o cliente viu: se diferente da do disco, responde **409** com a versão atual. Falha de schema responde **422** com os erros do Zod.
-- Usuários com papel `leitor` só podem `GET` (listar e visualizar); `editor` e `admin` podem tudo de campanhas; só `admin` gerencia usuários.
+- Usuários com papel `leitor` só podem `GET` (listar e visualizar **todas** as campanhas); `editor` e `admin` podem tudo de campanhas; só `admin` gerencia usuários.
 - Somente o dono da campanha (ou admin) pode editar/excluir.
 
 ### Catálogos e render (mesmo do v1)

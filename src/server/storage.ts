@@ -22,7 +22,8 @@ export function sanitizarId(id: string): string {
 
 export type Storage = {
   campanhasDir: string;
-  listar: (usuarioId?: string, papel?: string) => { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number }[];
+  /** Lista os resumos de todas as campanhas (qualquer papel autenticado visualiza). */
+  listar: () => { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number }[];
   ler: (id: string) => Campanha;
   criar: (campanha: Campanha) => Campanha;
   gravar: (campanha: Campanha) => Campanha;
@@ -70,14 +71,12 @@ export function criarStorage(raizDados: string): Storage {
 
   const storage: Storage = {
     campanhasDir,
-    listar: (usuarioId, papel) => {
+    listar: () => {
       return readdirSync(campanhasDir)
         .filter((f) => f.endsWith(".json"))
         .map((f) => {
           try {
             const c = CampanhaSchema.parse(JSON.parse(readFileSync(join(campanhasDir, f), "utf8")));
-            // leitor só vê campanhas próprias; editor vê todas
-            if (papel === "leitor" && usuarioId && c.usuarioId !== usuarioId) return null;
             return { id: c.id, titulo: c.titulo, mes: c.mes, atualizadoEm: c.atualizadoEm, nPaginas: c.paginas.length };
           } catch {
             return null; // arquivo corrompido não derruba a listagem

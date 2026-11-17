@@ -23,6 +23,8 @@ export type Autenticacao = {
   cadastrarUsuario: (input: z.infer<typeof CriarUsuarioSchema>) => UsuarioResumo;
   /** Lista todos os usuários (sem senha). */
   listarUsuarios: () => UsuarioResumo[];
+  /** Ativa/desativa um usuário. Retorna o resumo atualizado ou null se não existir. */
+  definirAtivo: (id: string, ativo: boolean) => UsuarioResumo | null;
   /** Quantidade de usuários cadastrados (para permitir o primeiro). */
   totalUsuarios: () => number;
   /** Faz login e retorna o usuário + token de sessão. */
@@ -86,6 +88,18 @@ export function criarAutenticacao(raizDados?: string): Autenticacao {
   const totalUsuarios = (): number => {
     const linha = db.prepare("SELECT COUNT(*) AS n FROM usuarios").get() as { n: number };
     return linha.n;
+  };
+
+  const definirAtivo = (id: string, ativo: boolean): UsuarioResumo | null => {
+    const r = db.prepare("UPDATE usuarios SET ativo = ? WHERE id = ?").run(ativo ? 1 : 0, id);
+    if (r.changes === 0) return null;
+    const linha = db
+      .prepare("SELECT * FROM usuarios WHERE id = ?")
+      .get(id) as
+      | { id: string; nome: string; email: string; senha_hash: string; papel: string; ativo: number; criado_em: string }
+      | undefined;
+    // sessões do usuário desativado morrem na próxima validação (validarSessao exige ativo = 1)
+    return linha ? usuarioParaResumo(linhaParaUsuario(linha)) : null;
   };
 
   const login = (input: z.infer<typeof LoginSchema>) => {
@@ -152,7 +166,7 @@ export function criarAutenticacao(raizDados?: string): Autenticacao {
 
   const usuarioResumo = (u: Usuario): UsuarioResumo => usuarioParaResumo(u);
 
-  return { cadastrarUsuario, listarUsuarios, totalUsuarios, login, logout, validarSessao, usuarioResumo };
+  return { cadastrarUsuario, listarUsuarios, totalUsuarios, definirAtivo, login, logout, validarSessao, usuarioResumo };
 }
 
 /** Converte a linha do SQLite em Usuario (papel validado contra o enum). */

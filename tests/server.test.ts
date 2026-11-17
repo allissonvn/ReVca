@@ -203,6 +203,85 @@ describe("Gestão de usuários (só admin)", () => {
     const criada = await req("POST", "/api/campanhas");
     expect(criada.status).toBe(201);
   });
+
+  it("leitor visualiza todas as campanhas (lista e leitura)", async () => {
+    // campanha criada pelo admin; o leitor não é dono
+    const storage = criarStorage(raizDados);
+    storage.criar({ ...campanhaTeste(), id: "visivel-leitor" } as never);
+
+    await fazerLogin("leitor@vca.com", "leitor123");
+    const lista = await req("GET", "/api/campanhas");
+    expect(lista.status).toBe(200);
+    expect((lista.json as { id: string }[]).some((c) => c.id === "visivel-leitor")).toBe(true);
+
+    const leitura = await req("GET", "/api/campanhas/visivel-leitor");
+    expect(leitura.status).toBe(200);
+    expect((leitura.json as { id: string }).id).toBe("visivel-leitor");
+  });
+
+  it("leitor não cria nem edita campanhas", async () => {
+    await fazerLogin("leitor@vca.com", "leitor123");
+    const criada = await req("POST", "/api/campanhas");
+    expect(criada.status).toBe(403);
+    const storage = criarStorage(raizDados);
+    const atual = JSON.parse(JSON.stringify(campanhaTeste()));
+    atual.id = "visivel-leitor";
+    atual.revisao = 2; // revisão não importa: requerEditor bloqueia antes
+    const salva = await req("PUT", "/api/campanhas/visivel-leitor", atual);
+    expect(salva.status).toBe(403);
+  });
+
+  it("admin ativa e desativa usuário; sessão/login do desativado morre", async () => {
+    await fazerLogin();
+
+    // id do leitor (listado pelo admin)
+    const lista = await req("GET", "/api/auth/usuarios");
+    const leitor = (lista.json as { id: string; email: string }[]).find((u) => u.email === "leitor@vca.com")!;
+
+    // desativa: sessão ativa do leitor deixa de valer e login é negado
+    tokenSessao = undefined;
+    await fazerLogin("leitor@vca.com", "leitor123");
+    const tokenAntigo = tokenSessao!;
+    await fazerLogin(); // volta ao admin para poder desativar
+
+    const off = await req("PATCH", `/api/auth/usuarios/${leitor.id}`, { ativo: false });
+    expect(off.status).toBe(200);
+    expect((off.json as { ativo: boolean }).ativo).toBe(false);
+
+    tokenSessao = tokenAntigo;
+    expect(await req("GET", "/api/auth/me")).toHaveProperty("status", 401); // sessão derrubada
+    tokenSessao = undefined;
+    expect(await req("POST", "/api/auth/login", { email: "leitor@vca.com", senha: "leitor123" })).toHaveProperty("status", 401);
+
+    // reativa: volta a logar
+    await fazerLogin();
+    const on = await req("PATCH", `/api/auth/usuarios/${leitor.id}`, { ativo: true });
+    expect(on.status).toBe(200);
+    await fazerLogin("leitor@vca.com", "leitor123");
+    expect(await req("GET", "/api/auth/me")).toHaveProperty("status", 200);
+  });
+
+  it("admin não ativa/desativa a si mesmo", async () => {
+    await fazerLogin();
+    const lista = await req("GET", "/api/auth/usuarios");
+    const eu = (lista.json as { id: string; email: string }[]).find((u) => u.email === "admin@vca.com")!;
+    const r = await req("PATCH", `/api/auth/usuarios/${eu.id}`, { ativo: false });
+    expect(r.status).toBe(400);
+  });
+
+  it("leitor não ativa/desativa usuários", async () => {
+    await fazerLogin("leitor@vca.com", "leitor123");
+    const lista = await req("GET", "/api/auth/usuarios");
+    expect(lista.status).toBe(403);
+    const r = await req("PATCH", "/api/auth/usuarios/qualquer-id", { ativo: false });
+    expect(r.status).toBe(403);
+  });
+
+  it("usuário inexistente na ativação responde 404", async () => {
+    await fazerLogin();
+    const r = await req("PATCH", "/api/auth/usuarios/nunca-existiu", { ativo: false });
+    expect(r.status).toBe(404);
+  });
 });
 
 describe("API de campanhas (com autenticação)", () => {

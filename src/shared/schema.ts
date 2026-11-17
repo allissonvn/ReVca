@@ -162,6 +162,12 @@ export const CriarUsuarioSchema = z.object({
 });
 export type CriarUsuarioInput = z.infer<typeof CriarUsuarioSchema>;
 
+/** Admin liga/desliga um usuário; só isso por enquanto (sem edição de nome/papel). */
+export const AlterarUsuarioSchema = z.object({
+  ativo: z.boolean(),
+});
+export type AlterarUsuarioInput = z.infer<typeof AlterarUsuarioSchema>;
+
 export const UsuarioResumoSchema = z.object({
   id: z.string().min(1),
   nome: z.string().min(1),

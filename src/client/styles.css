@@ -67,6 +67,19 @@ fieldset { border: 0; margin: 0 0 12px; padding: 0; }
 }
 .badge-papel.admin { background: var(--verde); color: #fff; }
 .badge-papel.editor { background: var(--primario); color: #fff; }
+.badge-situacao {
+  display: inline-block; padding: 2px 8px; border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+}
+.badge-situacao.ativo { background: rgb(102 204 0 / 18%); color: #3f7d00; }
+.badge-situacao.inativo { background: rgb(255 59 59 / 14%); color: var(--vermelho); }
+[data-theme="escuro"] .badge-situacao.ativo { color: #8ce33e; }
+.usu-tabela tr.inativo td:not(:nth-child(4)) { opacity: .5; }
+.usu-tabela .usu-acoes { text-align: right; white-space: nowrap; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .dica.ok { color: var(--verde); font-weight: 700; }
 
 /* ---------- botões ---------- */

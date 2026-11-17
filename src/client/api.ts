@@ -56,6 +56,10 @@ export function criarUsuario(dados: CriarUsuarioInput): Promise<UsuarioResumo> {
   return chamar("POST", "/api/auth/usuarios", dados) as Promise<UsuarioResumo>;
 }
 
+export function definirUsuarioAtivo(id: string, ativo: boolean): Promise<UsuarioResumo> {
+  return chamar("PATCH", `/api/auth/usuarios/${encodeURIComponent(id)}`, { ativo }) as Promise<UsuarioResumo>;
+}
+
 export function listarCampanhas(): Promise<CampanhaResumo[]> {
   return chamar("GET", "/api/campanhas") as Promise<CampanhaResumo[]>;
 }

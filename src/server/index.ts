@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { mkdirSync } from "node:fs";
 import { ZodError } from "zod";
 import {
-  Campanha, CampanhaSchema, MESES, UsuarioResumo,
+  Campanha, CampanhaSchema, MESES, AlterarUsuarioSchema, UsuarioResumo,
 } from "../shared/schema.js";
 import { renderDocumento } from "../shared/render.js";
 import { criarStorage, Storage, IdInvalidoError, NaoEncontradoError, ConflitoRevisaoError } from "./storage.js";
@@ -116,11 +116,9 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     next();
   };
 
-  const podeVerCampanha = (usuario: UsuarioResumo | undefined, campanha: Campanha): boolean => {
-    if (!usuario) return false;
-    if (usuario.papel === "editor" || usuario.papel === "admin") return true;
-    return campanha.usuarioId === usuario.id;
-  };
+  /** Ver campanha: qualquer usuário autenticado (leitor visualiza tudo).
+   *  A edição/exclusão continua restrita por requerEditor + podeEditar. */
+  const podeVerCampanha = (usuario: UsuarioResumo | undefined): boolean => !!usuario;
 
   // ---- Auth ----
   app.post("/api/auth/login", (req, res) => {
@@ -174,14 +172,28 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     res.json(auth.listarUsuarios());
   });
 
+  app.patch("/api/auth/usuarios/:id", requerSessao, requerAdmin, (req: ReqComUsuario, res) => {
+    const id = req.params.id!;
+    if (id === req.usuario!.id) {
+      res.status(400).json({ erro: "não é possível ativar/desativar o próprio usuário" });
+      return;
+    }
+    try {
+      const { ativo } = AlterarUsuarioSchema.parse(req.body);
+      const usuario = auth.definirAtivo(id, ativo);
+      if (!usuario) {
+        res.status(404).json({ erro: "usuário não encontrado" });
+        return;
+      }
+      res.json(usuario);
+    } catch (e) {
+      tratarErro(e, res);
+    }
+  });
+
   // ---- Campanhas (exigem autenticação) ----
   app.get("/api/campanhas", requerSessao, (req: ReqComUsuario, res) => {
-    const usuario = req.usuario!;
-    const campanhas = storage.listar(
-      usuario.papel === "leitor" ? usuario.id : undefined,
-      usuario.papel
-    );
-    res.json(campanhas);
+    res.json(storage.listar());
   });
 
   app.post("/api/campanhas", requerSessao, requerEditor, (req: ReqComUsuario, res) => {
@@ -193,7 +205,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
     try {
       if (corpo.duplicarDe) {
         const origem = storage.ler(corpo.duplicarDe);
-        if (!podeVerCampanha(usuario, origem)) {
+        if (!podeVerCampanha(usuario)) {
           res.status(403).json({ erro: "não é dono desta campanha" });
           return;
         }
@@ -218,7 +230,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   app.get("/api/campanhas/:id", requerSessao, (req: ReqComUsuario, res) => {
     try {
       const c = storage.ler(req.params.id!);
-      if (!podeVerCampanha(req.usuario, c)) {
+      if (!podeVerCampanha(req.usuario)) {
         res.status(403).json({ erro: "não é dono desta campanha" });
         return;
       }
@@ -272,7 +284,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   app.get("/render/:id", requerSessao, (req: ReqComUsuario, res) => {
     try {
       const c = storage.ler(req.params.id!);
-      if (!podeVerCampanha(req.usuario, c)) {
+      if (!podeVerCampanha(req.usuario)) {
         res.status(403).json({ erro: "não é dono desta campanha" });
         return;
       }
@@ -286,7 +298,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   app.post("/api/campanhas/:id/exportar", requerSessao, async (req: ReqComUsuario, res) => {
     try {
       const c = storage.ler(req.params.id!);
-      if (!podeVerCampanha(req.usuario, c)) {
+      if (!podeVerCampanha(req.usuario)) {
         res.status(403).json({ erro: "não é dono desta campanha" });
         return;
       }

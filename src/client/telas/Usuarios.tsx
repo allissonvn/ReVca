@@ -1,10 +1,11 @@
 import type { JSX } from "react";
-// Gestão de usuários (só admin): lista quem tem conta e cadastra novos
-// editor/leitor. Novo admin só nasce pelo primeiro acesso (bootstrap).
+// Gestão de usuários (só admin): lista quem tem conta, cadastra novos
+// editor/leitor e ativa/desativa. Novo admin só nasce pelo primeiro acesso
+// (bootstrap). O leitor visualiza tudo, mas o servidor bloqueia a escrita.
 import { useEffect, useState } from "react";
-import { ApiErro, criarUsuario, listarUsuarios } from "../api.js";
+import { ApiErro, criarUsuario, definirUsuarioAtivo, listarUsuarios } from "../api.js";
 import { UsuarioResumo } from "../../shared/schema.js";
-import { notificar, useEstado } from "../store.js";
+import { estado, notificar, useEstado } from "../store.js";
 
 export function Usuarios(): JSX.Element {
   useEstado();
@@ -22,10 +23,16 @@ export function Usuarios(): JSX.Element {
     })();
   }, []);
 
-  async function criado(novo: UsuarioResumo): Promise<void> {
-    setUsuarios((atual) => [...(atual ?? []), novo]);
-    setAviso(`Usuário ${novo.nome} cadastrado como ${novo.papel}.`);
-    notificar();
+  async function alternarAtivo(u: UsuarioResumo): Promise<void> {
+    setErro(""); setAviso("");
+    try {
+      const atualizado = await definirUsuarioAtivo(u.id, !u.ativo);
+      setUsuarios((atual) => (atual ?? []).map((x) => (x.id === atualizado.id ? atualizado : x)));
+      setAviso(`${atualizado.nome} ${atualizado.ativo ? "ativado" : "desativado"}.`);
+      notificar();
+    } catch (e) {
+      setErro(e instanceof ApiErro ? e.message : "Não foi possível alterar o usuário.");
+    }
   }
 
   return (
@@ -36,10 +43,13 @@ export function Usuarios(): JSX.Element {
       </header>
 
       <main className="home-conteudo usu-tela">
-        {erro !== "" && <p className="dica erro">Erro ao carregar: {erro}</p>}
+        {erro !== "" && <p className="dica erro" role="alert">Erro: {erro}</p>}
         {aviso !== "" && <p className="dica ok" role="status">{aviso}</p>}
 
-        <FormularioNovo aoCriado={(u) => void criado(u)} />
+        <FormularioNovo aoCriado={(novo) => {
+          setUsuarios((atual) => [...(atual ?? []), novo]);
+          setAviso(`Usuário ${novo.nome} cadastrado como ${novo.papel}.`);
+        }} />
 
         <section aria-label="Usuários cadastrados">
           <h2>Cadastrados</h2>
@@ -47,17 +57,36 @@ export function Usuarios(): JSX.Element {
           {usuarios !== null && (
             <table className="usu-tabela">
               <thead>
-                <tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Situação</th></tr>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Papel</th>
+                  <th>Situação</th>
+                  <th aria-label="Ações"><span className="sr-only">Ações</span></th>
+                </tr>
               </thead>
               <tbody>
-                {usuarios.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.nome}</td>
-                    <td>{u.email}</td>
-                    <td><span className={`badge-papel ${u.papel}`}>{u.papel}</span></td>
-                    <td>{u.ativo ? "ativo" : "desativado"}</td>
-                  </tr>
-                ))}
+                {usuarios.map((u) => {
+                  const proprio = u.id === estado.usuario?.id;
+                  return (
+                    <tr key={u.id} className={u.ativo ? "" : "inativo"}>
+                      <td>{u.nome}{proprio && <small> (você)</small>}</td>
+                      <td>{u.email}</td>
+                      <td><span className={`badge-papel ${u.papel}`}>{u.papel}</span></td>
+                      <td><span className={`badge-situacao ${u.ativo ? "ativo" : "inativo"}`}>{u.ativo ? "Ativo" : "Inativo"}</span></td>
+                      <td className="usu-acoes">
+                        <button
+                          className={`btn pequeno ${u.ativo ? "perigo" : "primario"}`}
+                          disabled={proprio}
+                          title={proprio ? "Você não pode desativar a si mesmo" : u.ativo ? "Desativar acesso deste usuário" : "Reativar acesso deste usuário"}
+                          onClick={() => void alternarAtivo(u)}
+                        >
+                          {u.ativo ? "Desativar" : "Ativar"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -99,6 +128,7 @@ function FormularioNovo({ aoCriado }: { aoCriado: (u: UsuarioResumo) => void }):
   return (
     <form className="usu-form" onSubmit={(e) => void enviar(e)} aria-label="Cadastrar novo usuário">
       <h2>Novo usuário</h2>
+      <p className="dica">O leitor visualiza todas as campanhas; o editor também cria e edita.</p>
       <div className="usu-campos">
         <label htmlFor="usu-nome">Nome</label>
         <input id="usu-nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
