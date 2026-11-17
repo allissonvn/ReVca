@@ -64,9 +64,15 @@ export function deslogar(): void {
   notificar();
 }
 
-/** Papel do usuário logado; "leitor" não pode criar/editar/excluir campanhas. */
-export function ehEditor(): boolean {
-  return estado.usuario?.papel === "editor";
+/** Papel do usuário logado: admin e editor criam/editam/excluem campanhas;
+ *  leitor só visualiza. Só o admin gerencia usuários. */
+export function podeEditar(): boolean {
+  const papel = estado.usuario?.papel;
+  return papel === "editor" || papel === "admin";
+}
+
+export function ehAdmin(): boolean {
+  return estado.usuario?.papel === "admin";
 }
 
 // ---- seletores auxiliares ----

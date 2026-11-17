@@ -47,6 +47,28 @@ fieldset { border: 0; margin: 0 0 12px; padding: 0; }
 .login-caixa input { width: 100%; }
 .login-caixa .btn { margin-top: 14px; }
 
+/* ---------- usuários (só admin) ---------- */
+.usu-tela { display: flex; flex-direction: column; gap: 24px; max-width: 720px; margin: 0 auto; }
+.usu-form {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 20px; background: var(--superficie);
+  border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra);
+}
+.usu-campos { display: flex; flex-direction: column; gap: 4px; }
+.usu-campos input, .usu-campos select { width: 100%; }
+.usu-form .btn { align-self: flex-start; margin-top: 6px; }
+.usu-form .dica.erro { margin: 0; }
+.usu-tabela { width: 100%; border-collapse: collapse; background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); }
+.usu-tabela th, .usu-tabela td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--borda); font-size: 13.5px; }
+.usu-tabela th { color: var(--texto-fraco); font-weight: 700; }
+.badge-papel {
+  display: inline-block; padding: 2px 8px; border-radius: 8px;
+  font-size: 12px; font-weight: 700; background: var(--superficie-2);
+}
+.badge-papel.admin { background: var(--verde); color: #fff; }
+.badge-papel.editor { background: var(--primario); color: #fff; }
+.dica.ok { color: var(--verde); font-weight: 700; }
+
 /* ---------- botões ---------- */
 .btn {
   border: 1px solid var(--borda); background: var(--superficie); color: var(--texto);

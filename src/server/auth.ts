@@ -1,6 +1,7 @@
 // Autenticação (AGENTS.md §6, v2).
 // Sessão via token em Map em memória + cookie HTTP-only.
-// Papéis: editor (cria/edita/exclui campanhas) e leitor (apenas visualiza).
+// Papéis: admin (gere usuários + tudo do editor), editor (cria/edita/exclui
+// campanhas) e leitor (apenas visualiza).
 import { randomBytes } from "node:crypto";
 import { compareSync, genSaltSync, hashSync } from "bcryptjs";
 import { z } from "zod";
@@ -8,6 +9,7 @@ import { getDb, Usuario } from "./db.js";
 import {
   CriarUsuarioSchema,
   LoginSchema,
+  Papel,
   UsuarioResumo,
   UsuarioResumoSchema,
   UsuarioSchema,
@@ -17,8 +19,12 @@ import {
 const SESSAO_DURACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
 export type Autenticacao = {
-  /** Cadastra um novo usuário (só sem sessão ativa — primeiro admin). */
+  /** Cadastra um novo usuário (a regra de quem pode chamar fica na rota). */
   cadastrarUsuario: (input: z.infer<typeof CriarUsuarioSchema>) => UsuarioResumo;
+  /** Lista todos os usuários (sem senha). */
+  listarUsuarios: () => UsuarioResumo[];
+  /** Quantidade de usuários cadastrados (para permitir o primeiro). */
+  totalUsuarios: () => number;
   /** Faz login e retorna o usuário + token de sessão. */
   login: (input: z.infer<typeof LoginSchema>) => { usuario: UsuarioResumo; token: string };
   /** Encerra a sessão pelo token. */
@@ -32,18 +38,19 @@ export type Autenticacao = {
 // Sessões em memória: token -> { usuarioId, expiraEm }
 const sessoes = new Map<string, { usuarioId: string; expiraEm: string }>();
 
-export function criarAutenticacao(): Autenticacao {
-  const db = getDb();
+export function criarAutenticacao(raizDados?: string): Autenticacao {
+  // raizDados propaga o diretório de dados (isolamento nos testes)
+  const db = getDb(raizDados);
 
   const cadastrarUsuario = (input: z.infer<typeof CriarUsuarioSchema>): UsuarioResumo => {
     const dados = CriarUsuarioSchema.parse(input);
 
     const existente = db
-      .prepare("SELECT id FROM usuarios LIMIT 1")
-      .get() as { id: string } | undefined;
+      .prepare("SELECT id FROM usuarios WHERE email = ?")
+      .get(dados.email) as { id: string } | undefined;
     if (existente) {
-      const err: any = new Error("cadastro só permitido para o primeiro usuário");
-      err.status = 403;
+      const err: any = new Error("e-mail já cadastrado");
+      err.status = 409;
       throw err;
     }
 
@@ -67,6 +74,18 @@ export function criarAutenticacao(): Autenticacao {
       criadoEm: agora,
     };
     return usuarioParaResumo(usuario);
+  };
+
+  const listarUsuarios = (): UsuarioResumo[] => {
+    const linhas = db
+      .prepare("SELECT * FROM usuarios ORDER BY criado_em, id")
+      .all() as Array<{ id: string; nome: string; email: string; senha_hash: string; papel: string; ativo: number; criado_em: string }>;
+    return linhas.map((linha) => usuarioParaResumo(linhaParaUsuario(linha)));
+  };
+
+  const totalUsuarios = (): number => {
+    const linha = db.prepare("SELECT COUNT(*) AS n FROM usuarios").get() as { n: number };
+    return linha.n;
   };
 
   const login = (input: z.infer<typeof LoginSchema>) => {
@@ -96,7 +115,7 @@ export function criarAutenticacao(): Autenticacao {
       nome: linha.nome,
       email: linha.email,
       senhaHash: linha.senha_hash,
-      papel: linha.papel as "editor" | "leitor",
+      papel: linha.papel as Papel,
       ativo: !!linha.ativo,
       criadoEm: linha.criado_em,
     };
@@ -128,20 +147,25 @@ export function criarAutenticacao(): Autenticacao {
 
     if (!u) return null;
 
-    return {
-      id: u.id,
-      nome: u.nome,
-      email: u.email,
-      senhaHash: u.senha_hash,
-      papel: u.papel as "editor" | "leitor",
-      ativo: !!u.ativo,
-      criadoEm: u.criado_em,
-    };
+    return linhaParaUsuario(u);
   };
 
   const usuarioResumo = (u: Usuario): UsuarioResumo => usuarioParaResumo(u);
 
-  return { cadastrarUsuario, login, logout, validarSessao, usuarioResumo };
+  return { cadastrarUsuario, listarUsuarios, totalUsuarios, login, logout, validarSessao, usuarioResumo };
+}
+
+/** Converte a linha do SQLite em Usuario (papel validado contra o enum). */
+function linhaParaUsuario(linha: { id: string; nome: string; email: string; senha_hash: string; papel: string; ativo: number; criado_em: string }): Usuario {
+  return {
+    id: linha.id,
+    nome: linha.nome,
+    email: linha.email,
+    senhaHash: linha.senha_hash,
+    papel: linha.papel as Papel,
+    ativo: !!linha.ativo,
+    criadoEm: linha.criado_em,
+  };
 }
 
 function gerarId(): string {

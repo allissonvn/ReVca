@@ -1,14 +1,18 @@
 import type { JSX } from "react";
-// Roteamento mínimo por query string: /?campanha=<id> abre o editor; sem, a home.
+// Roteamento mínimo por query string: /?campanha=<id> abre o editor;
+// /?tela=usuarios abre a gestão de usuários (só admin); sem, a home.
 // Tudo atrás do gate de login: sem sessão válida, só a tela de login aparece.
 import { useEffect, useState } from "react";
 import { definirAoReceber401, lerSessao } from "./api.js";
-import { deslogar, estado, useEstado } from "./store.js";
+import { deslogar, estado, useEstado, ehAdmin } from "./store.js";
 import { Editor } from "./telas/Editor.js";
 import { Home } from "./telas/Home.js";
 import { Login } from "./telas/Login.js";
+import { Usuarios } from "./telas/Usuarios.js";
 
-const id = new URLSearchParams(window.location.search).get("campanha");
+const params = new URLSearchParams(window.location.search);
+const id = params.get("campanha");
+const tela = params.get("tela");
 
 export function App(): JSX.Element {
   useEstado();
@@ -33,6 +37,10 @@ export function App(): JSX.Element {
   }
   if (estado.usuario === null) {
     return <Login aoEntrar={() => setFase("pronto")} />;
+  }
+  if (tela === "usuarios") {
+    // não-admin tentando abrir direto pela URL cai na home
+    return ehAdmin() ? <Usuarios /> : <Home />;
   }
   return id ? <Editor id={id} /> : <Home />;
 }

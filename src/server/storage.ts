@@ -121,8 +121,8 @@ export function criarStorage(raizDados: string): Storage {
       return readdirSync(dir).filter((f) => f.endsWith(".json")).length;
     },
     podeEditar: (usuarioId, papel, campanha) => {
-      // editor pode editar qualquer campanha; leitor só a própria
-      if (papel === "editor") return true;
+      // admin/editor editam qualquer campanha; leitor só a própria
+      if (papel === "editor" || papel === "admin") return true;
       if (!usuarioId) return false;
       return campanha.usuarioId === usuarioId;
     },

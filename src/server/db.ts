@@ -6,6 +6,7 @@
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { acharRaiz } from "../shared/raiz.js";
+import type { Papel } from "../shared/schema.js";
 
 // createRequire injetado pelo banner do esbuild
 const require = createRequire(import.meta.url);
@@ -16,7 +17,7 @@ export type Usuario = {
   nome: string;
   email: string;
   senhaHash: string;
-  papel: "editor" | "leitor";
+  papel: Papel;
   ativo: boolean;
   criadoEm: string;
 };
@@ -53,7 +54,7 @@ export function getDb(raizDados?: string): DbInstance {
         nome TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         senha_hash TEXT NOT NULL,
-        papel TEXT NOT NULL CHECK (papel IN ('editor', 'leitor')),
+        papel TEXT NOT NULL CHECK (papel IN ('admin', 'editor', 'leitor')),
         ativo INTEGER NOT NULL DEFAULT 1,
         criado_em TEXT NOT NULL
       );
@@ -67,10 +68,41 @@ export function getDb(raizDados?: string): DbInstance {
       CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token);
       CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
     `);
+    migrarPapeis(dbInstance);
     db = dbInstance;
     dbs.set(chave, db as DbInstance);
   }
   return db!;
+}
+
+/** Migração v2: adiciona o papel 'admin'. SQLite não altera CHECK em cima do tempo,
+ *  então recriamos a tabela quando o CREATE existente não menciona 'admin'.
+ *  O primeiro usuário cadastrado (dono do sistema) é promovido a admin. */
+function migrarPapeis(db: DbInstance): void {
+  const linha = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'")
+    .get() as { sql: string } | undefined;
+  if (!linha || linha.sql.includes("'admin'")) return;
+  // foreign_keys fica desligado por padrão no better-sqlite3: a tabela sessoes
+  // (referências antigas) sobrevive ao DROP; sessões válidas são em memória.
+  db.exec(`
+    BEGIN;
+    CREATE TABLE usuarios_nova (
+      id TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      senha_hash TEXT NOT NULL,
+      papel TEXT NOT NULL CHECK (papel IN ('admin', 'editor', 'leitor')),
+      ativo INTEGER NOT NULL DEFAULT 1,
+      criado_em TEXT NOT NULL
+    );
+    INSERT INTO usuarios_nova (id, nome, email, senha_hash, papel, ativo, criado_em)
+      SELECT id, nome, email, senha_hash, papel, ativo, criado_em FROM usuarios ORDER BY criado_em, id;
+    DROP TABLE usuarios;
+    ALTER TABLE usuarios_nova RENAME TO usuarios;
+    COMMIT;
+  `);
+  db.exec(`UPDATE usuarios SET papel = 'admin' WHERE id = (SELECT id FROM usuarios ORDER BY criado_em, id LIMIT 1)`);
 }
 
 export function fecharDb(raizDados?: string): void {

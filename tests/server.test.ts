@@ -81,16 +81,16 @@ const campanhaTeste = () => ({
 afterAll(() => { server.close(); });
 
 describe("Autenticação (v2)", () => {
-  it("cadastra primeiro usuário", async () => {
+  it("cadastra primeiro usuário (bootstrap sempre vira admin)", async () => {
     const r = await req("POST", "/api/auth/usuarios", {
       nome: "Admin",
       email: "admin@vca.com",
       senha: "admin123",
-      papel: "editor",
+      papel: "editor", // pedido, mas o bootstrap força admin
     });
     expect([201, 403]).toContain(r.status);
     if (r.status === 201) {
-      expect((r.json as { papel: string }).papel).toBe("editor");
+      expect((r.json as { papel: string }).papel).toBe("admin");
     }
   });
 
@@ -128,6 +128,80 @@ describe("Autenticação (v2)", () => {
     expect(r.status).toBe(204);
     const r2 = await req("GET", "/api/auth/me");
     expect(r2.status).toBe(401);
+  });
+});
+
+describe("Gestão de usuários (só admin)", () => {
+  it("admin cadastra editor e leitor e lista todos", async () => {
+    await fazerLogin(); // admin@vca.com virou admin no bootstrap
+
+    const editor = await req("POST", "/api/auth/usuarios", {
+      nome: "Editora", email: "editora@vca.com", senha: "editor123", papel: "editor",
+    });
+    expect(editor.status).toBe(201);
+    expect((editor.json as { papel: string }).papel).toBe("editor");
+
+    const leitor = await req("POST", "/api/auth/usuarios", {
+      nome: "Leitor", email: "leitor@vca.com", senha: "leitor123", papel: "leitor",
+    });
+    expect(leitor.status).toBe(201);
+    expect((leitor.json as { papel: string }).papel).toBe("leitor");
+
+    const lista = await req("GET", "/api/auth/usuarios");
+    expect(lista.status).toBe(200);
+    const emails = (lista.json as { email: string }[]).map((u) => u.email);
+    expect(emails).toContain("editora@vca.com");
+    expect(emails).toContain("leitor@vca.com");
+    // resumo nunca expõe senha
+    expect(JSON.stringify(lista.json)).not.toContain("senha");
+  });
+
+  it("e-mail duplicado responde 409", async () => {
+    await fazerLogin();
+    const r = await req("POST", "/api/auth/usuarios", {
+      nome: "Duplicado", email: "admin@vca.com", senha: "qualquer1", papel: "leitor",
+    });
+    expect(r.status).toBe(409);
+  });
+
+  it("editor não pode cadastrar nem listar usuários", async () => {
+    await fazerLogin("editora@vca.com", "editor123");
+
+    const criacao = await req("POST", "/api/auth/usuarios", {
+      nome: "X", email: "x@vca.com", senha: "senha123", papel: "leitor",
+    });
+    expect(criacao.status).toBe(403);
+
+    const lista = await req("GET", "/api/auth/usuarios");
+    expect(lista.status).toBe(403);
+  });
+
+  it("leitor não pode cadastrar nem listar usuários", async () => {
+    await fazerLogin("leitor@vca.com", "leitor123");
+
+    const criacao = await req("POST", "/api/auth/usuarios", {
+      nome: "Y", email: "y@vca.com", senha: "senha123", papel: "leitor",
+    });
+    expect(criacao.status).toBe(403);
+
+    const lista = await req("GET", "/api/auth/usuarios");
+    expect(lista.status).toBe(403);
+  });
+
+  it("sem sessão não cadastra (quando já existe usuário) nem lista", async () => {
+    tokenSessao = undefined;
+    const criacao = await req("POST", "/api/auth/usuarios", {
+      nome: "Z", email: "z@vca.com", senha: "senha123", papel: "leitor",
+    });
+    expect(criacao.status).toBe(403);
+    const lista = await req("GET", "/api/auth/usuarios");
+    expect(lista.status).toBe(401);
+  });
+
+  it("admin também cria e edita campanhas (admin ≠ leitor)", async () => {
+    await fazerLogin();
+    const criada = await req("POST", "/api/campanhas");
+    expect(criada.status).toBe(201);
   });
 });
 

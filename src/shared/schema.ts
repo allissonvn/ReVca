@@ -126,7 +126,7 @@ export function erroCampanha(data: unknown): string | null {
 
 // ---- Autenticação (v2) ----
 
-export const PapelSchema = z.enum(["editor", "leitor"]);
+export const PapelSchema = z.enum(["admin", "editor", "leitor"]);
 export type Papel = z.infer<typeof PapelSchema>;
 
 export const UsuarioSchema = z.object({

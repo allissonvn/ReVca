@@ -31,7 +31,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   const raiz = opcoes.raizProjeto ?? acharRaiz();
   const raizDados = opcoes.raizDados ?? join(raiz, "data");
   const storage = opcoes.storage ?? criarStorage(raizDados);
-  const auth = opcoes.autenticacao ?? criarAutenticacao();
+  const auth = opcoes.autenticacao ?? criarAutenticacao(raizDados);
 
   const app = express();
   app.use(express.json({ limit: "10mb" }));
@@ -96,8 +96,21 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
       res.status(401).json({ erro: "não autenticado" });
       return;
     }
-    if (req.usuario.papel !== "editor") {
+    if (req.usuario.papel !== "editor" && req.usuario.papel !== "admin") {
       res.status(403).json({ erro: "apenas editores podem criar/editar/excluir campanhas" });
+      return;
+    }
+    next();
+  };
+
+  /** Admin gerencia usuários; editor/leitor não. */
+  const requerAdmin = (req: ReqComUsuario, res: Response, next: NextFunction): void => {
+    if (!req.usuario) {
+      res.status(401).json({ erro: "não autenticado" });
+      return;
+    }
+    if (req.usuario.papel !== "admin") {
+      res.status(403).json({ erro: "apenas o administrador pode gerenciar usuários" });
       return;
     }
     next();
@@ -105,7 +118,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
 
   const podeVerCampanha = (usuario: UsuarioResumo | undefined, campanha: Campanha): boolean => {
     if (!usuario) return false;
-    if (usuario.papel === "editor") return true;
+    if (usuario.papel === "editor" || usuario.papel === "admin") return true;
     return campanha.usuarioId === usuario.id;
   };
 
@@ -135,11 +148,18 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   });
 
   app.post("/api/auth/usuarios", (req, res) => {
-    // Só permite cadastro se não houver sessão ativa (primeiro usuário)
-    const token = lerToken(req);
-    if (token && auth.validarSessao(token)) {
-      res.status(403).json({ erro: "cadastro só permitido sem sessão ativa" });
-      return;
+    // Regras: sem usuários no banco, o cadastro é aberto (bootstrap) e o papel
+    // é sempre admin. Depois disso, só o admin cadastra (editor ou leitor).
+    const primeiro = auth.totalUsuarios() === 0;
+    if (primeiro) {
+      req.body = { ...(req.body as object), papel: "admin" };
+    } else {
+      const token = lerToken(req);
+      const usuario = token ? auth.validarSessao(token) : null;
+      if (!usuario || usuario.papel !== "admin") {
+        res.status(403).json({ erro: "apenas o administrador pode cadastrar usuários" });
+        return;
+      }
     }
     try {
       const usuario = auth.cadastrarUsuario(req.body);
@@ -148,6 +168,10 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
       const status = (e as { status?: number }).status ?? 500;
       res.status(status).json({ erro: e instanceof Error ? e.message : String(e) });
     }
+  });
+
+  app.get("/api/auth/usuarios", requerSessao, requerAdmin, (_req: ReqComUsuario, res) => {
+    res.json(auth.listarUsuarios());
   });
 
   // ---- Campanhas (exigem autenticação) ----

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
 import { Campanha, Catalogos } from "../../shared/schema.js";
 import { CampanhaResumo, listarCampanhas, lerCampanha, lerCatalogos, criarCampanha, excluirCampanha, logout } from "../api.js";
-import { estado, alternarTema, useEstado, ehEditor } from "../store.js";
+import { estado, alternarTema, useEstado, podeEditar, ehAdmin } from "../store.js";
 
 const LARGURA_MINI = 220;
 
@@ -14,7 +14,7 @@ type Item = { resumo: CampanhaResumo; dados: Campanha };
 export function Home(): JSX.Element {
   useEstado(); // re-render quando o tema muda
   // Home só é renderizada com usuário autenticado (gate no App)
-  const editor = ehEditor();
+  const editor = podeEditar();
   const [itens, setItens] = useState<Item[] | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState("");
@@ -82,6 +82,11 @@ export function Home(): JSX.Element {
           <button className="btn fantasma" onClick={alternarTema} title="Alternar tema do painel (a arte é sempre clara)">
             {estado.tema === "escuro" ? "☀ Claro" : "🌙 Escuro"}
           </button>
+          {ehAdmin() && (
+            <button className="btn fantasma" onClick={() => { window.location.href = "/?tela=usuarios"; }} title="Cadastrar e consultar usuários">
+              Usuários
+            </button>
+          )}
           {editor && <button className="btn primario" onClick={() => void nova()}>+ Nova campanha</button>}
           <button className="btn" onClick={() => void sair()} title="Encerrar a sessão">Sair</button>
         </div>

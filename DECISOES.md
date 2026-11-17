@@ -88,3 +88,12 @@
 - "Sair" chama POST /api/auth/logout e recarrega a p\u00e1gina (limpa estado local de uma vez).
 - etch usa credentials: "same-origin" em todas as chamadas, para o cookie HttpOnly connect.sid acompanhar tudo.
 - Removido console.log de DEBUG em equerSessao (imprimia token/cookie \u2014 vazamento em log).
+
+## Update v2.1 (papel admin e gestão de usu\u00e1rios)
+- Novo papel **admin** (acima do editor): administra usu\u00e1rios e faz tudo o que o editor faz. Hierarquia: admin > editor > leitor. Editor e admin s\u00e3o diferentes de prop\u00f3sito \u2014 n\u00e3o fundir.
+- PapelSchema = admin | editor | leitor. equerEditor e storage.podeEditar aceitam admin e editor; novo equerAdmin protege a gest\u00e3o de usu\u00e1rios.
+- Migra\u00e7\u00e3o do SQLite: o CHECK antigo n\u00e3o aceitava 'admin' e SQLite n\u00e3o altera CHECK; db.ts recria a tabela quando o CREATE existente n\u00e3o menciona 'admin' e promove o **primeiro** usu\u00e1rio (dono) a admin \u2014 por isso admin@vca.com virou admin sem a\u00e7\u00e3o manual.
+- Bootstrap: POST /api/auth/usuarios sem usu\u00e1rios no banco \u00e9 aberto e força papel admin; depois disso, s\u00f3 admin cadastra (403 para os demais). Formul\u00e1rio do cliente s\u00f3 oferece editor/leitor \u2014 novo admin n\u00e3o se cria pela tela.
+- E-mail duplicado responde 409 (antes deixava estourar o erro bruto do SQLite).
+- Tela 	elas/Usuarios.tsx em /?tela=usuarios: lista com nome/e-mail/papel/situa\u00e7\u00e3o + formul\u00e1rio de cadastro com erros amig\u00e1veis (409/422/403). N\u00e3o-admin que abre a URL cai na home; a prote\u00e7\u00e3o real \u00e9 o middleware no servidor.
+- Bug corrigido de passagem: criarAutenticacao() abria sempre o banco real (data/vca.db) mesmo nos testes \u2014 usu\u00e1rios de teste vazavam para o produ\u00e7\u00e3o (mesma li\u00e7\u00e3o do render.test). Agora recebe aizDados e os testes rodam isolados.

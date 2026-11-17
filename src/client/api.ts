@@ -1,5 +1,5 @@
 // Chamadas à API REST do servidor (AGENTS.md §6).
-import { Campanha, Catalogos, UsuarioResumo, LoginInput } from "../shared/schema.js";
+import { Campanha, Catalogos, CriarUsuarioInput, UsuarioResumo, LoginInput } from "../shared/schema.js";
 
 export type CampanhaResumo = { id: string; titulo: string; mes: string; atualizadoEm: string; nPaginas: number };
 
@@ -44,6 +44,16 @@ export function logout(): Promise<null> {
 
 export function lerSessao(): Promise<{ usuario: UsuarioResumo }> {
   return chamar("GET", "/api/auth/me") as Promise<{ usuario: UsuarioResumo }>;
+}
+
+// ---- gestão de usuários (só admin; AGENTS.md §6) ----
+
+export function listarUsuarios(): Promise<UsuarioResumo[]> {
+  return chamar("GET", "/api/auth/usuarios") as Promise<UsuarioResumo[]>;
+}
+
+export function criarUsuario(dados: CriarUsuarioInput): Promise<UsuarioResumo> {
+  return chamar("POST", "/api/auth/usuarios", dados) as Promise<UsuarioResumo>;
 }
 
 export function listarCampanhas(): Promise<CampanhaResumo[]> {
