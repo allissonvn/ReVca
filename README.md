@@ -49,4 +49,3 @@ npm run seed       # cria uma campanha de exemplo em data/campanhas/
 - Stack: Node 20+, TypeScript strict, Express, Zod, React 19 (esbuild), SQLite (usuários/sessões), bcryptjs (senhas), Puppeteer (exportação), Vitest. Sem framework de componentes no cliente.
 - A arte (layout das páginas) vive **só** em `src/shared/render.ts` — usada pela prévia do editor e pelo exportador.
 - `HOST` e `PORT` podem ser trocados por variáveis de ambiente (padrão `127.0.0.1:8080`).
-- Decisões de projeto em `DECISOES.md`; especificação completa em `AGENTS.md`.
