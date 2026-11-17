@@ -3,6 +3,7 @@
 // quando o bundle dele muda. Roda com `npm run dev`.
 import { context } from "esbuild";
 import { spawn } from "node:child_process";
+import { createConnection } from "node:net";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +12,15 @@ const PORT = process.env.PORT ?? "8080";
 
 let servidor = null;
 let reiniciando = false;
+
+/** true se algo já está escutando na porta (ex.: servidor esquecido de outra sessão). */
+function portaEmUso(porta) {
+  return new Promise((resolve) => {
+    const sock = createConnection({ host: "127.0.0.1", port: Number(porta) });
+    sock.on("connect", () => { sock.destroy(); resolve(true); });
+    sock.on("error", () => resolve(false));
+  });
+}
 
 function subirServidor() {
   servidor = spawn(process.execPath, [join(root, "dist/server/index.js")], {
@@ -66,6 +76,14 @@ async function vigiarCliente() {
     logLevel: "warning",
   });
   await ctx.watch();
+}
+
+// porta ocupada (ex.: servidor de outra sessão ainda de pé): aviso claro
+// em vez do stack trace de EADDRINUSE
+if (await portaEmUso(PORT)) {
+  console.error(`dev: a porta ${PORT} já está em uso.`);
+  console.error("Feche o outro Editor VCA (ou encerre os processos node) e rode `npm run dev` de novo.");
+  process.exit(1);
 }
 
 subirServidor();
