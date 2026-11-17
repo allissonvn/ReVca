@@ -103,3 +103,12 @@
 - Ativo/inativo: PATCH /api/auth/usuarios/:id (s\u00f3 admin) com { ativo: boolean }. Regras: admin n\u00e3o altera o pr\u00f3prio status (400, evita se trancar fora) e usu\u00e1rio inexistente d\u00e1 404. Login de desativado \u00e9 negado (401) e a sess\u00e3o ativa morre na pr\u00f3xima valida\u00e7\u00e3o (alidarSessao exige ativo = 1). N\u00e3o h\u00e1 exclus\u00e3o de usu\u00e1rio \u2014 desativar substitui apagar (mant\u00e9m hist\u00f3rico de autoria das campanhas).
 - Tela de usu\u00e1rios: coluna "Situa\u00e7\u00e3o" com badge verde/vermelho, bot\u00e3o Ativar/Desativar (desabilitado na linha do pr\u00f3prio admin, marcada "(voc\u00ea)"), linhas inativas esmaecidas.
 - Testes novos: leitor v\uEA todas as campanhas (lista + leitura de campanha alheia), leitor n\u00e3o cria/edita, ciclo completo de desativa\u00e7\u00e3o/reativa\u00e7\u00e3o (sess\u00e3o antiga morre, login negado, volta), autoprote\u00e7\u00e3o do admin (400), 404 e 403.
+
+## Update v2.3 (leitor no editor: somente leitura visual)
+- O servidor j\u00e1 bloqueava a escrita do leitor (403), mas a interface do editor mostrava todos os campos como edit\u00e1veis \u2014 a edi\u00e7\u00e3o do leitor "ia pro ar" e falhava no autosave. Regra de UI: se n\u00e3o pode gravar, o campo nem aparece edit\u00e1vel.
+- Modo leitor no Editor (podeEditar() === false):
+  - Coluna da direita (PainelPropriedades) **n\u00e3o renderiza**; grade do editor vira 2 colunas (.editor-corpo.leitor).
+  - Painel de p\u00e1ginas mantido, mas s\u00f3 para **selecionar**: sem subir/descer, duplicar, excluir, arrastar (item deixa de ser draggable) e sem "+ P\u00e1gina". "Ver todas" continua (n\u00e3o altera dados).
+  - T\u00edtulo da topbar eadOnly e m\u00eas disabled.
+  - Exporta\u00e7\u00e3o continua dispon\u00edvel (leitor pode exportar: \u00e9 leitura).
+- Verifica\u00e7\u00e3o automatizada com Puppeteer (temp/verifica-leitor.mjs): admin v\u00EA 3 colunas + a\u00e7\u00f5es; leitor v\u00EA 2 colunas, sem painel/a\u00e7\u00f5es, p\u00e1ginas clic\u00e1veis, exporta\u00e7\u00e3o ativa.

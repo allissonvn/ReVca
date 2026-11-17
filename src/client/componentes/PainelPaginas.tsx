@@ -11,9 +11,9 @@ import { estado, useEstado, modeloDe, marcarSujo, notificarConteudo } from "../s
 const LARGURA_THUMB = 112;
 const ESCALA_THUMB = LARGURA_THUMB / 924;
 
-type Props = { estouros: Map<string, number> };
+type Props = { estouros: Map<string, number>; somenteLeitura?: boolean };
 
-export function PainelPaginas({ estouros }: Props): JSX.Element {
+export function PainelPaginas({ estouros, somenteLeitura = false }: Props): JSX.Element {
   const e = useEstado();
   const [de, setDe] = useState<number | null>(null);
   const [sobre, setSobre] = useState<number | null>(null);
@@ -42,6 +42,7 @@ export function PainelPaginas({ estouros }: Props): JSX.Element {
             estouro={estouros.get(p.id)}
             arrastando={de === i}
             soltarAqui={de !== null && sobre === i && de !== i}
+            somenteLeitura={somenteLeitura}
             aoArrastar={(ev) => { ev.dataTransfer.setData("text/plain", String(i)); ev.dataTransfer.effectAllowed = "move"; setDe(i); }}
             aoPassar={(ev) => { ev.preventDefault(); setSobre(i); }}
             aoSair={() => setSobre((s) => (s === i ? null : s))}
@@ -50,12 +51,14 @@ export function PainelPaginas({ estouros }: Props): JSX.Element {
           />
         ))}
       </div>
-      <div className="pag-add">
-        <select id="novo-modelo" aria-label="Modelo da nova página">
-          {e.catalogos.modelos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-        </select>
-        <button className="btn primario bloco" onClick={adicionarPagina}>+ Página</button>
-      </div>
+      {!somenteLeitura && (
+        <div className="pag-add">
+          <select id="novo-modelo" aria-label="Modelo da nova página">
+            {e.catalogos.modelos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+          <button className="btn primario bloco" onClick={adicionarPagina}>+ Página</button>
+        </div>
+      )}
       <label className="inline">
         <input
           type="checkbox"
@@ -72,6 +75,7 @@ type PropsItem = {
   pag: Pagina; i: number; total: number;
   estouro?: number;
   arrastando: boolean; soltarAqui: boolean;
+  somenteLeitura: boolean;
   aoArrastar: (ev: DragEvent) => void;
   aoPassar: (ev: DragEvent) => void;
   aoSair: () => void;
@@ -79,7 +83,7 @@ type PropsItem = {
   aoTerminar: () => void;
 };
 
-function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, aoArrastar, aoPassar, aoSair, aoSoltar, aoTerminar }: PropsItem): JSX.Element {
+function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, somenteLeitura, aoArrastar, aoPassar, aoSair, aoSoltar, aoTerminar }: PropsItem): JSX.Element {
   const e = useEstado();
   const modelo = modeloDe(pag.modelo);
 
@@ -101,12 +105,13 @@ function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, aoArrastar
   return (
     <div
       className={`pag-item${i === e.pagSelecionada ? " atual" : ""}${arrastando ? " arrastando" : ""}${soltarAqui ? " soltar-aqui" : ""}`}
-      draggable
-      onDragStart={aoArrastar}
-      onDragOver={aoPassar}
-      onDragLeave={aoSair}
-      onDrop={aoSoltar}
-      onDragEnd={aoTerminar}
+      // leitor só seleciona: item não é arrastável nem recebe soltura
+      draggable={!somenteLeitura}
+      onDragStart={somenteLeitura ? undefined : aoArrastar}
+      onDragOver={somenteLeitura ? undefined : aoPassar}
+      onDragLeave={somenteLeitura ? undefined : aoSair}
+      onDrop={somenteLeitura ? undefined : aoSoltar}
+      onDragEnd={somenteLeitura ? undefined : aoTerminar}
     >
       <button
         className="pag-nome"
@@ -127,22 +132,24 @@ function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, aoArrastar
           {estouro !== undefined && <span className="aviso" title={`Conteúdo maior que a página (${estouro}px)`}>⚠ {estouro}px</span>}
         </span>
       </button>
-      <div className="pag-acoes">
-        <button className="icone" aria-label="Subir página" disabled={i === 0} onClick={() => mover(-1)}>▲</button>
-        <button className="icone" aria-label="Descer página" disabled={i === total - 1} onClick={() => mover(1)}>▼</button>
-        <button className="icone" aria-label="Duplicar página" onClick={() => {
-          const ps = estado.campanha!.paginas;
-          ps.splice(i + 1, 0, JSON.parse(JSON.stringify(pag)) as Pagina);
-          estado.pagSelecionada = i + 1;
-          marcarSujo();
-        }}>⧉</button>
-        <button className="icone perigo" aria-label="Excluir página" onClick={() => {
-          const ps = estado.campanha!.paginas;
-          ps.splice(i, 1);
-          estado.pagSelecionada = Math.min(estado.pagSelecionada, Math.max(0, ps.length - 1));
-          marcarSujo();
-        }}>✕</button>
-      </div>
+      {!somenteLeitura && (
+        <div className="pag-acoes">
+          <button className="icone" aria-label="Subir página" disabled={i === 0} onClick={() => mover(-1)}>▲</button>
+          <button className="icone" aria-label="Descer página" disabled={i === total - 1} onClick={() => mover(1)}>▼</button>
+          <button className="icone" aria-label="Duplicar página" onClick={() => {
+            const ps = estado.campanha!.paginas;
+            ps.splice(i + 1, 0, JSON.parse(JSON.stringify(pag)) as Pagina);
+            estado.pagSelecionada = i + 1;
+            marcarSujo();
+          }}>⧉</button>
+          <button className="icone perigo" aria-label="Excluir página" onClick={() => {
+            const ps = estado.campanha!.paginas;
+            ps.splice(i, 1);
+            estado.pagSelecionada = Math.min(estado.pagSelecionada, Math.max(0, ps.length - 1));
+            marcarSujo();
+          }}>✕</button>
+        </div>
+      )}
     </div>
   );
 }

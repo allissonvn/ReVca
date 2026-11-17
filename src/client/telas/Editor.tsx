@@ -3,7 +3,7 @@ import type { JSX } from "react";
 // centro, propriedades à direita, barra superior com status de salvamento.
 import { useEffect, useState } from "react";
 import { lerCampanha, lerCatalogos, criarCampanha } from "../api.js";
-import { salvarAgora, estado, useEstado, alternarTema, notificarConteudo, marcarSujo } from "../store.js";import { Canvas } from "../componentes/Canvas.js";
+import { salvarAgora, estado, useEstado, alternarTema, notificarConteudo, marcarSujo, podeEditar } from "../store.js";import { Canvas } from "../componentes/Canvas.js";
 import { PainelPaginas } from "../componentes/PainelPaginas.js";
 import { PainelPropriedades } from "../componentes/PainelPropriedades.js";
 import { ModalExportar } from "../componentes/ModalExportar.js";
@@ -16,6 +16,8 @@ export function Editor({ id }: { id: string }): JSX.Element {
   const [statusExport, setStatusExport] = useState("");
   // páginas com estouro (id → altura), medido pelo canvas
   const [estouros, setEstouros] = useState(new Map<string, number>());
+  // leitor: visualiza a arte e as páginas (só seleção); sem campos de edição
+  const leitor = !podeEditar();
 
   useEffect(() => {
     void (async () => {
@@ -62,12 +64,14 @@ export function Editor({ id }: { id: string }): JSX.Element {
           className="topbar-titulo"
           value={c.titulo}
           aria-label="Título da campanha"
+          readOnly={leitor}
           onChange={(e) => { c.titulo = e.target.value; marcarSujo(); }}
         />
         <select
           className="topbar-mes"
           value={c.mes}
           aria-label="Mês da campanha"
+          disabled={leitor}
           onChange={(e) => { c.mes = e.target.value as typeof c.mes; marcarSujo(); }}
         >
           {["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"].map((m) => <option key={m}>{m}</option>)}
@@ -86,10 +90,10 @@ export function Editor({ id }: { id: string }): JSX.Element {
 
       {statusExport !== "" && <div className="faixa-export" role="status">{statusExport}</div>}
 
-      <div className="editor-corpo">
-        <PainelPaginas estouros={estouros} />
+      <div className={`editor-corpo${leitor ? " leitor" : ""}`}>
+        <PainelPaginas estouros={estouros} somenteLeitura={leitor} />
         <Canvas aoEstouro={setEstouros} />
-        <PainelPropriedades onDuplicar={() => void duplicar()} />
+        {!leitor && <PainelPropriedades onDuplicar={() => void duplicar()} />}
       </div>
 
       {modalAberto && <ModalExportar aoFechar={() => setModalAberto(false)} aoExportar={(o) => void exportar(o, setStatusExport)} />}
