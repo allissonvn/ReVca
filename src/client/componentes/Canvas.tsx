@@ -157,7 +157,11 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
 
   const paginas = campanha.paginas
     .map((p, i) => ({ p, i }))
-    .filter(({ i }) => estado.verTodas || i === estado.pagSelecionada);
+    .filter(({ i }) => {
+      // By default show only the selected page; "ver todas" is an explicit opt-in
+      if (estado.verTodas) return true;
+      return i === estado.pagSelecionada;
+    });
 
   const pagSelecionada = campanha.paginas[estado.pagSelecionada];
   const cabeNaPagina = pagSelecionada

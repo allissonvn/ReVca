@@ -46,6 +46,8 @@ export function Editor({ id }: { id: string }): JSX.Element {
         const [catalogos, campanha] = await Promise.all([lerCatalogos(), lerCampanha(id)]);
         estado.catalogos = catalogos;
         estado.campanha = campanha;
+        // Ensure default view: single page, not "all pages"
+        estado.verTodas = false;
         estado.pagSelecionada = 0;
         estado.blocoSelecionado = null;
         notificarConteudo();
