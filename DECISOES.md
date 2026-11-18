@@ -123,3 +123,21 @@
 - **Lógica de permissão simplificada**: `podeVerCampanha` (sempre verdadeiro, com mensagens de "não é dono" enganosas) foi removida — qualquer autenticado visualiza; `storage.podeEditar(papel)` ficou só com a regra real (admin/editor editam; leitor nunca chega à rota de escrita por causa do requerEditor).
 - **Dependências fantasma removidas**: `express-session`, `@types/express-session` e `@types/bcrypt` estavam no package.json sem uso (a sessão é própria e o hash é bcryptjs).
 - **Documentação realinhada**: AGENTS.md, README.md e este arquivo agora descrevem o sistema atual (React no cliente, SQLite para usuários, autenticação e papéis); este arquivo foi regravado em UTF-8 limpo (as seções v2 haviam sido anexadas com encoding quebrado, com códigos de escape literais no lugar dos acentos).
+
+## Update v3 (redesenho UI/UX — REVCA)
+- Fonte do plano: `referencia/PROMPT-UI.md` (OpenCode prompt). Redesenho do front-end sem alterar data model, schema, storage, auth, export ou API. Arte do PDF intocável (`render.ts`).
+- Marca: renomeia produto para **REVCA** (header, login, title, favicon, docs). Título da campanha ("Parcelamento Matriz") não é renomeado.
+- Novas deps permitidas: `lucide-react` (ícones) e `@fontsource/inter` (fonte UI, local/offline). Log em `DECISOES.md` quando instaladas.
+- CSS puro com variáveis. Tema escuro padrão (prefers-color-scheme respeitado). Tokens: `--bg`, `--canvas`, `--surface`, `--surface-2`, `--field`, `--border`, `--text`, `--muted`, `--primary`, `--primary-text`, `--selected`, `--green`, `--ok`, `--danger`.
+- Componentes em `src/client/ui/`: `Button`, `IconButton`, `Field`, `SearchField`, `Segmented`, `Card`/`Section`, `Chip`, `Badge`, `Avatar`, `Toast`, `ConfirmDialog`, `Logo`, `Mark`.
+- SVGs da marca: estão em `referencia/` (não em `referencia/design/` como o prompt diz): `revca-logo-dark.svg`, `revca-logo-light.svg`, `revca-mark.svg`.
+- Favicon construído do `Mark`. `Logo` (~29px) em Home e Login; `Mark` (32px) em Editor e Usuários.
+
+### Phase 0 — Audit e baseline (concluída)
+- `DECISOES.md`: este plano adicionado (esta seção).
+- Repositório lido: clientes em `src/client/` (App, Login, Home, Editor, Usuarios, exportar, store, api, main, Canvas, PainelPaginas, PainelPropriedades, CampoCor, ModalExportar).
+- Baseline: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125 passando, incluindo os 6 de exportação com Chromium).
+- Scripts de dev existentes: `scripts/extract-assets.mjs`, `scripts/alinhamento.mjs`, `scripts/preview.ts`, `scripts/shot.mjs`.
+- Novo script criado: `scripts/screenshots.mjs` (Puppeteer): faz login, captura Login/Home/Editor/Usuários em dark e light, 1440×900, em `tmp/screens/` (gitignorado).
+- Antes-screenshots: capturados com o script acima.
+- Um commit por fase. Após cada fase: typecheck + tests + relatório de até 5 linhas. Nunca avançar com regressão vs baseline.

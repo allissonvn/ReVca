@@ -4,5 +4,6 @@ data/historico/
 data/campanhas/
 data/lixeira/
 temp/
+tmp/
 *.log
 data/vca.db*
