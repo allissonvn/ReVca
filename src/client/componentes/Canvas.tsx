@@ -42,7 +42,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   function aplicarEscala(): void {
     const el = container.current;
     if (!el) return;
-    const escala = Math.max(0.2, Math.min(1, (el.clientWidth - 48) / LARGURA_PAGINA));
+    const escala = Math.max(0.25, Math.min(2, e.zoom));
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
       m.style.transform = `scale(${escala})`;
       m.style.width = `${LARGURA_PAGINA * escala}px`;
@@ -58,7 +58,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     let max = ALTURA_PAGINA;
     pag.querySelectorAll<HTMLElement>("*").forEach((filho) => {
       const st = getComputedStyle(filho);
-      if (st.position === "absolute" || st.position === "fixed") return;
+      // Incluir altura de todos os elementos, inclusive positionados
       const fundo = (filho.getBoundingClientRect().bottom - rect.top) / escala;
       if (fundo > max) max = fundo;
     });
@@ -72,11 +72,12 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     const mapa = new Map<string, number>();
     el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
       const conteudo = alturaConteudo(pag);
-      if (conteudo > TEM_ESTOURO) {
+      const escalaAtual = pag.clientWidth / LARGURA_PAGINA || 1;
+      if (conteudo > TEM_ESTOURO * escalaAtual) {
         mapa.set(pag.dataset.pagina ?? "", conteudo);
         const aviso = document.createElement("div");
         aviso.className = "aviso-estouro";
-        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de 1308px. O que passar será cortado no PDF.`;
+        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de ${1308 * escalaAtual}px. O que passar será cortado no PDF.`;
         pag.closest(".moldura")?.before(aviso);
       }
     });
