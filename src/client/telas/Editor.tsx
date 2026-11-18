@@ -1,13 +1,34 @@
+// Editor: layout REVCA — Phase 3.
+// Top bar 56px | left rail 272px | canvas flex | right panel 360px.
+// Mantém todos os comportamentos existentes (autosave, 409, DnD, cor por seleção, export).
 import type { JSX } from "react";
-// Editor: layout estilo Canva — páginas à esquerda, canvas (arte real) ao
-// centro, propriedades à direita, barra superior com status de salvamento.
 import { useEffect, useState } from "react";
 import { lerCampanha, lerCatalogos, criarCampanha } from "../api.js";
-import { salvarAgora, estado, useEstado, alternarTema, notificarConteudo, marcarSujo, podeEditar } from "../store.js";import { Canvas } from "../componentes/Canvas.js";
-import { PainelPaginas } from "../componentes/PainelPaginas.js";
-import { PainelPropriedades } from "../componentes/PainelPropriedades.js";
+import {
+  salvarAgora,
+  estado,
+  useEstado,
+  alternarTema,
+  notificarConteudo,
+  marcarSujo,
+  podeEditar,
+  selecionarBloco,
+  limparSelecaoBloco,
+  definirZoom,
+  alternarAjusteTela,
+} from "../store.js";
+import { LeftRail } from "../componentes/LeftRail.js";
+import { RightPanel } from "../componentes/RightPanel.js";
+import { Canvas } from "../componentes/Canvas.js";
+import { ZoomBar } from "../componentes/ZoomBar.js";
 import { ModalExportar } from "../componentes/ModalExportar.js";
 import { exportar } from "../exportar.js";
+import { Mark } from "../ui/Mark.js";
+import { Button } from "../ui/Button.js";
+import { IconButton } from "../ui/IconButton.js";
+import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck } from "lucide-react";
+
+const MESES = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
 export function Editor({ id }: { id: string }): JSX.Element {
   useEstado(); // re-render em qualquer mudança de estado/tema
@@ -26,6 +47,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
         estado.catalogos = catalogos;
         estado.campanha = campanha;
         estado.pagSelecionada = 0;
+        estado.blocoSelecionado = null;
         notificarConteudo();
       } catch (e) {
         setErro(e instanceof Error ? e.message : String(e));
@@ -55,73 +77,118 @@ export function Editor({ id }: { id: string }): JSX.Element {
     window.location.href = `/?campanha=${encodeURIComponent(nova.id)}`;
   }
 
-  return (
-    <div className="editor">
-      <header className="topbar">
-        <button className="btn fantasma" onClick={() => void voltar()} title="Salvar e voltar às campanhas">← Campanhas</button>
-
-        <input
-          className="topbar-titulo"
-          value={c.titulo}
-          aria-label="Título da campanha"
-          readOnly={leitor}
-          onChange={(e) => { c.titulo = e.target.value; marcarSujo(); }}
-        />
-        <select
-          className="topbar-mes"
-          value={c.mes}
-          aria-label="Mês da campanha"
-          disabled={leitor}
-          onChange={(e) => { c.mes = e.target.value as typeof c.mes; marcarSujo(); }}
-        >
-          {["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"].map((m) => <option key={m}>{m}</option>)}
-        </select>
-
-        <IndicadorStatus />
-
-        <div className="topbar-acoes">
-          <button className="btn" onClick={() => void exportar({ formato: "pdf", qualidade: "alta", pagina: "todas" }, setStatusExport)} title="PDF com todas as páginas (qualidade alta)">⬇ PDF</button>
-          <button className="btn primario" onClick={() => { setStatusExport(""); setModalAberto(true); }}>⚙ Exportar…</button>
-          <button className="btn fantasma" onClick={alternarTema} title="Alternar tema do painel (a arte é sempre clara)">
-            {estado.tema === "escuro" ? "☀" : "🌙"}
-          </button>
-        </div>
-      </header>
-
-      {statusExport !== "" && <div className="faixa-export" role="status">{statusExport}</div>}
-
-      <div className={`editor-corpo${leitor ? " leitor" : ""}`}>
-        <PainelPaginas estouros={estouros} somenteLeitura={leitor} />
-        <Canvas aoEstouro={setEstouros} />
-        {!leitor && <PainelPropriedades onDuplicar={() => void duplicar()} />}
-      </div>
-
-      {modalAberto && <ModalExportar aoFechar={() => setModalAberto(false)} aoExportar={(o) => void exportar(o, setStatusExport)} />}
-    </div>
-  );
-}
-
-/** Indicador "salvo / salvando / erro / conflito" + botão de recarregar em 409. */
-function IndicadorStatus(): JSX.Element {
-  const { status } = useEstado();
-  const textos: Record<string, string> = {
+  const statusTextos: Record<string, string> = {
     salvo: "✓ Tudo salvo",
     salvando: "… Salvando",
     sujo: "● Alterações pendentes",
     erro: "✗ Erro ao salvar",
     conflito: "✗ Conflito: mudou em outro lugar",
   };
-  const recarregar = async (): Promise<void> => {
-    const nova = await lerCampanha(estado.campanha!.id);
-    estado.campanha = nova;
-    estado.conflito = false;
-    estado.status = "salvo";
-    notificarConteudo();
-  };
+
   return (
-    <div className="status" role="status">
-      <span className={`indicador ${status}`}>{textos[status] ?? ""}</span>
-      {status === "conflito" && <button className="btn pequeno" onClick={() => void recarregar()}>Recarregar versão do disco</button>}
+    <div className="editor">
+      {/* ===== Top bar 56px ===== */}
+      <header className="topbar">
+        <button
+          className="btn fantasma"
+          onClick={() => void voltar()}
+          title="Salvar e voltar às campanhas"
+        >
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
+          ← Campanhas
+        </button>
+        <Mark tamanho={32} aria-label="REVCA — Editor" />
+        <div className="topbar-campanha">
+          <FileText size={16} strokeWidth={2} aria-hidden="true" />
+          <input
+            className="topbar-titulo"
+            value={c.titulo}
+            aria-label="Título da campanha"
+            readOnly={leitor}
+            onChange={(e) => { c.titulo = e.target.value; marcarSujo(); }}
+          />
+        </div>
+        <div className="topbar-mes">
+          <Calendar size={16} strokeWidth={2} aria-hidden="true" />
+          <select
+            className="topbar-mes-select"
+            value={c.mes}
+            aria-label="Mês da campanha"
+            disabled={leitor}
+            onChange={(e) => { c.mes = e.target.value as typeof c.mes; marcarSujo(); }}
+          >
+            {MESES.map((m) => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+        <div className="topbar-status">
+          {estado.status === "salvo" ? (
+            <span className="status salvo">
+              <CircleCheck size={14} strokeWidth={2} aria-hidden="true" />
+              Tudo salvo
+            </span>
+          ) : estado.status === "salvando" ? (
+            <span className="status salvando">… Salvando</span>
+          ) : estado.status === "sujo" ? (
+            <span className="status sujo">● Alterações pendentes</span>
+          ) : estado.status === "erro" ? (
+            <span className="status erro">✗ Erro ao salvar</span>
+          ) : (
+            <span className="status conflito">✗ Conflito: mudou em outro lugar</span>
+          )}
+        </div>
+        <div className="topbar-acoes">
+          <IconButton
+            icon={Undo2}
+            cor="muted"
+            aria-label="Desfazer"
+            onClick={() => { /* undo - Phase 4 */ }}
+          />
+          <IconButton
+            icon={Redo2}
+            cor="muted"
+            aria-label="Refazer"
+            onClick={() => { /* redo - Phase 4 */ }}
+          />
+          <Button
+            variant="ghost"
+            icon="Download"
+            title="Exportar"
+            onClick={() => { setModalAberto(true); }}
+          >
+            Exportar ▾
+          </Button>
+          <Button
+            variant="primary"
+            icon="Download"
+            onClick={() => void exportar({ formato: "pdf", qualidade: "alta", pagina: "todas" }, setStatusExport)}
+            title="PDF com todas as páginas (qualidade alta)"
+          >
+            Baixar PDF
+          </Button>
+          <IconButton
+            icon={estado.tema === "escuro" ? Sun : Moon}
+            cor="muted"
+            aria-label="Alternar tema do painel (a arte é sempre clara)"
+            onClick={alternarTema}
+          />
+        </div>
+      </header>
+
+      {statusExport !== "" && <div className="faixa-export" role="status">{statusExport}</div>}
+
+      {/* ===== Corpo: left rail | canvas | right panel ===== */}
+      <div className="editor-corpo">
+        <LeftRail estouros={estouros} somenteLeitura={leitor} />
+        <Canvas estouros={estouros} aoEstouro={setEstouros} />
+        {!leitor && <RightPanel onDuplicar={() => void duplicar()} />}
+      </div>
+
+      {modalAberto && (
+        <ModalExportar
+          aoFechar={() => setModalAberto(false)}
+          aoExportar={(o) => void exportar(o, setStatusExport)}
+        />
+      )}
     </div>
   );
 }

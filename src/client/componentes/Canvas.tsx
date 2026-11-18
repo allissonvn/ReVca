@@ -1,10 +1,12 @@
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
 // Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
 // visualmente quanto reportando o mapa de estouros ao editor (badges ⚠).
+// Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
 import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
-import { estado, useEstado, notificarConteudo } from "../store.js";
+import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco, definirZoom, alternarAjusteTela } from "../store.js";
+import { ZoomBar } from "./ZoomBar.js";
 
 const LARGURA_PAGINA = 924;
 const ALTURA_PAGINA = 1308;
@@ -12,10 +14,12 @@ const TEM_ESTOURO = ALTURA_PAGINA + 2;
 
 type Props = {
   /** Mapa idDaPágina → altura do conteúdo (páginas com estouro). */
+  estouros: Map<string, number>;
+  /** Callback quando o mapa de estouros muda. */
   aoEstouro?: (estouros: Map<string, number>) => void;
 };
 
-export function Canvas({ aoEstouro }: Props): JSX.Element {
+export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const e = useEstado();
   const container = useRef<HTMLDivElement>(null);
   const cssInjetado = useRef(false);
@@ -29,7 +33,6 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
       cssInjetado.current = true;
     }
     aplicarEscala();
-    // mede o estouro depois que o layout assenta (com a escala aplicada)
     const id = requestAnimationFrame(medirEstouros);
     const onResize = () => aplicarEscala();
     window.addEventListener("resize", onResize);
@@ -48,7 +51,7 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
   }
 
   /** Altura real do conteúdo, em px da arte (ignora absolutos — a marca d'água
-   * sai da página de propósito). Corrige pela escala da moldura. */
+   *  sai da página de propósito). Corrige pela escala da moldura. */
   function alturaConteudo(pag: HTMLElement): number {
     const rect = pag.getBoundingClientRect();
     const escala = rect.width / LARGURA_PAGINA || 1;
@@ -65,7 +68,6 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
   function medirEstouros(): void {
     const el = container.current;
     if (!el) return;
-    // recomeça a medição: remove os avisos visuais antigos (inseridos fora do React)
     el.querySelectorAll(".aviso-estouro").forEach((a) => a.remove());
     const mapa = new Map<string, number>();
     el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
@@ -78,12 +80,54 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
         pag.closest(".moldura")?.before(aviso);
       }
     });
-    // só notifica quando o resultado muda (evita laço de re-render)
     const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v}`).join("|");
     if (assinatura !== ultimoMapa.current) {
       ultimoMapa.current = assinatura;
       aoEstouro?.(mapa);
     }
+  }
+
+  // Destaca o bloco selecionado com outline + name tag
+  useLayoutEffect(() => {
+    const sel = estado.blocoSelecionado;
+    if (!sel) {
+      limparSelecaoBlocoDOM();
+      return;
+    }
+    const el = container.current;
+    if (!el) return;
+    limparSelecaoBlocoDOM();
+    const bloco = el.querySelector<HTMLElement>(`[data-bloco="${sel.bi}"]`);
+    if (bloco) {
+      bloco.style.outline = `2px solid var(--primary)`;
+      bloco.style.outlineOffset = "4px";
+      bloco.style.position = "relative";
+      const tag = document.createElement("div");
+      tag.className = "bloco-tag";
+      tag.textContent = `Bloco ${sel.bi + 1}`;
+      tag.style.position = "absolute";
+      tag.style.top = "-16px";
+      tag.style.left = "4px";
+      tag.style.background = "var(--primary)";
+      tag.style.color = "#0b1020";
+      tag.style.fontSize = "10px";
+      tag.style.fontWeight = "700";
+      tag.style.padding = "1px 6px";
+      tag.style.borderRadius = "4px";
+      tag.style.zIndex = "10";
+      bloco.prepend(tag);
+    }
+  }, [estado.blocoSelecionado]);
+
+  function limparSelecaoBlocoDOM(): void {
+    const el = container.current;
+    if (!el) return;
+    el.querySelectorAll<HTMLElement>("[data-bloco]").forEach((b) => {
+      b.style.outline = "";
+      b.style.outlineOffset = "";
+      b.style.position = "";
+    });
+    el.querySelectorAll<HTMLElement>(".bloco-tag").forEach((t) => t.remove());
   }
 
   const { campanha, catalogos } = e;
@@ -92,6 +136,11 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
   const paginas = campanha.paginas
     .map((p, i) => ({ p, i }))
     .filter(({ i }) => estado.verTodas || i === estado.pagSelecionada);
+
+  const pagSelecionada = campanha.paginas[estado.pagSelecionada];
+  const cabeNaPagina = pagSelecionada
+    ? !estouros.has(pagSelecionada.id)
+    : true;
 
   return (
     <main className="canvas" ref={container}>
@@ -103,11 +152,24 @@ export function Canvas({ aoEstouro }: Props): JSX.Element {
         >
           <div
             className="escala"
-            // render.ts escapa todo texto do usuário; HTML seguro por construção
             dangerouslySetInnerHTML={{ __html: renderCampanha({ ...campanha, paginas: [p] }, catalogos) }}
           />
         </div>
       ))}
+      {/* Barra de zoom */}
+      <ZoomBar
+        zoom={estado.zoom}
+        aoMudarZoom={(z) => { definirZoom(z); aplicarEscala(); }}
+        ajustado={estado.zoomAjustado}
+        aoAlternarAjuste={(ajustado) => { alternarAjusteTela(ajustado); if (!ajustado) aplicarEscala(); }}
+      />
+      <div className="canvas-status">
+        {cabeNaPagina ? (
+          <span className="status-ok">✓ Cabe na página</span>
+        ) : (
+          <span className="status-estouro">⚠ Conteúdo passa do limite</span>
+        )}
+      </div>
     </main>
   );
 }

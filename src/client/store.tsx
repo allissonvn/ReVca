@@ -16,6 +16,11 @@ export type Estado = {
   // página selecionada na prévia (índice) e se mostra todas
   pagSelecionada: number;
   verTodas: boolean;
+  // bloco selecionado no painel direito (ci, bi)
+  blocoSelecionado: { ci: number; bi: number } | null;
+  // zoom do canvas (0.25–2.0) e se está em "ajustar à tela"
+  zoom: number;
+  zoomAjustado: boolean;
   status: StatusSalvamento;
   // renovado quando o servidor responde 409 (versão nova no disco)
   conflito: boolean;
@@ -28,6 +33,9 @@ export const estado: Estado = {
   catalogos: null,
   pagSelecionada: 0,
   verTodas: false,
+  blocoSelecionado: null,
+  zoom: 1,
+  zoomAjustado: true,
   status: "salvo",
   conflito: false,
   tema: (localStorage.getItem("vca-tema") as "claro" | "escuro" | null) ?? "claro",
@@ -127,6 +135,32 @@ export async function salvarAgora(): Promise<void> {
 
 /** Mudança que afeta a prévia mas não suja a campanha (ex.: "ver todas"). */
 export function notificarConteudo(): void {
+  notificar();
+}
+
+/** Seleciona um bloco para edição no painel direito. */
+export function selecionarBloco(ci: number, bi: number): void {
+  estado.blocoSelecionado = { ci, bi };
+  notificar();
+}
+
+/** Limpa a seleção de bloco. */
+export function limparSelecaoBloco(): void {
+  estado.blocoSelecionado = null;
+  notificar();
+}
+
+/** Define o zoom do canvas. */
+export function definirZoom(zoom: number): void {
+  estado.zoom = Math.min(2, Math.max(0.25, zoom));
+  estado.zoomAjustado = false;
+  notificar();
+}
+
+/** Alterna "ajustar à tela". */
+export function alternarAjusteTela(ajustado: boolean): void {
+  estado.zoomAjustado = ajustado;
+  if (ajustado) estado.zoom = 1;
   notificar();
 }
 

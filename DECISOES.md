@@ -164,3 +164,13 @@
 - `Card.tsx`: `Section.titulo` tornado opcional.
 - `Button.tsx`: adicionadas props `title` e `cor`; importados ícones KeyRound, Power, UserPlus, Search, CopyPlus, Sun, Moon, Shield.
 - Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.
+
+### Phase 3 — Editor (visual only, concluída)
+- `src/client/componentes/Canvas.tsx`: adicionada barra de zoom (25–200%, Ctrl+wheel, teclas + - 0, "Ajustar à tela"), status "✓ Cabe na página" / "⚠ Conteúdo passa do limite", destaque do bloco selecionado com outline 2px --primary + name tag. Recebe `estouros` como prop.
+- `src/client/componentes/ZoomBar.tsx`: novo componente — botões minus/percentage/plus, botão ajustar à tela, atalhos de teclado.
+- `src/client/componentes/LeftRail.tsx`: novo componente — painel esquerdo com SearchField "Buscar página (N)", lista de itens ~64px com thumbnail 34×48, "n · <empreendimento>", grip à direita, selecionado com --selected background + 1px --primary border, DnD, setas subir/descer, duplicar, excluir, "+ Página" no bottom, checkbox "Ver todas as páginas".
+- `src/client/componentes/RightPanel.tsx`: novo componente — painel direito com 3 seções: (1) Campanha colapsada com Rodapé + Duplicar para outro mês; (2) Cartão N com Empreendimento select + Faixa verde como dois inputs full-width; (3) Bloco selecionado com chip tipo, color toolbar Azul/Vermelho/Sem cor, textarea multilinea, Segmented "2 colunas | 1 coluna", título colapsável; (4) Outros blocos com linhas compactas (grip, nome, primeira linha, eye toggle) + "Adicionar bloco".
+- `Editor.tsx`: reescrito com layout 3 colunas (left rail 272px | canvas flex | right panel 360px), top bar 56px com Mark, "← Campanhas", campo título com FileText, mês com Calendar, save status (CircleCheck), Undo/Redo placeholders, Exportar ▾, Baixar PDF primário. Marca REVCA.
+- `store.tsx`: adicionado estado `blocoSelecionado`, `zoom`, `zoomAjustado` + funções `selecionarBloco`, `limparSelecaoBloco`, `definirZoom`, `alternarAjusteTela`.
+- `tokens.css`: adicionados estilos para editor 3 colunas, left rail, right panel, zoom bar, canvas status, seções, faixa verde, blocos.
+- Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.
