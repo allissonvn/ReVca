@@ -141,3 +141,17 @@
 - Novo script criado: `scripts/screenshots.mjs` (Puppeteer): faz login, captura Login/Home/Editor/Usuários em dark e light, 1440×900, em `tmp/screens/` (gitignorado).
 - Antes-screenshots: capturados com o script acima.
 - Um commit por fase. Após cada fase: typecheck + tests + relatório de até 5 linhas. Nunca avançar com regressão vs baseline.
+
+### Phase 1 — Tokens e componentes base (concluída)
+- `src/client/estilos/tokens.css`: tokens CSS para tema claro e escuro (cores, tipografia Inter, raios, focus ring, componentes base). Importado via `@import` no `styles.css`.
+- `@fontsource/inter` instalado (fonte UI local/offline, subconjunto latin).
+- `lucide-react` instalado (ícones: 18px, stroke 2).
+- `src/client/ui/`: `Button`, `IconButton`, `Field`, `SearchField`, `Segmented`, `Card`/`Section`, `Chip`, `Badge`, `Avatar`, `Toast`, `ConfirmDialog`, `Logo`, `Mark` + `index.ts` (barrel).
+- `Login.tsx`: reescrito com `Logo`, `Button`, `Field` (tokens do design system). Marca REVCA no cabeçalho.
+- `Home.tsx`: reescrito com `Logo`, `Button`, `SearchField`, `Chip` (filtros de mês), `ConfirmDialog` (exclusão), `Avatar` (iniciais do usuário). Top bar com `Logo` à esquerda, ações à direita.
+- `index.html`: título alterado para "REVCA — Editor de Condições Comerciais".
+- `styles.css`: `@import "./estilos/tokens.css"` no topo; tokens legados mantidos para compatibilidade.
+- Inputs/selects/textarea usam `--field` / `--text` / `--border` em ambos os temas (corrigido problema de inputs brancos no dark).
+- Focus ring visível (2px `--primary-text`) em todos elementos interativos.
+- `prefers-reduced-motion` respeitado.
+- Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.

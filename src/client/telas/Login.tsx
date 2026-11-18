@@ -1,7 +1,11 @@
-import type { JSX } from "react";
 // Tela de login: primeiro gate do app. O servidor valida e-mail/senha e cria
-// a sessão via cookie HttpOnly (AGENTS.md §6). Sem dependências novas.
+// a sessão via cookie HttpOnly (AGENTS.md §6).
+// UI: design system REVCA (Phase 1).
+import type { JSX } from "react";
 import { useState } from "react";
+import { Logo } from "../ui/Logo.js";
+import { Button } from "../ui/Button.js";
+import { Field } from "../ui/Field.js";
 import { login } from "../api.js";
 import { estado, notificar } from "../store.js";
 
@@ -32,37 +36,41 @@ export function Login({ aoEntrar }: { aoEntrar: () => void }): JSX.Element {
   return (
     <div className="login">
       <form className="login-caixa" onSubmit={(e) => void enviar(e)} aria-label="Entrar no editor">
-        <div className="topbar-marca">
-          <span className="marca-aba" aria-hidden>Parcelamento</span>
-          <h1>Matriz VCA</h1>
-        </div>
+        <Logo altura={29} aria-label="REVCA — Entrar" />
         <p className="dica">Entre com sua conta para gerenciar as campanhas.</p>
 
-        <label htmlFor="login-email">E-mail</label>
-        <input
-          id="login-email"
+        <Field
+          label="E-mail"
           type="email"
-          autoComplete="email"
-          required
+          name="email"
+          id="login-email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
         />
 
-        <label htmlFor="login-senha">Senha</label>
-        <input
-          id="login-senha"
+        <Field
+          label="Senha"
           type="password"
-          autoComplete="current-password"
-          required
+          name="senha"
+          id="login-senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
+          required
+          autoComplete="current-password"
         />
 
         {erro !== "" && <p className="dica erro" role="alert">{erro}</p>}
 
-        <button className="btn primario bloco" type="submit" disabled={enviando}>
+        <Button
+          variant="primary"
+          type="submit"
+          block
+          disabled={enviando}
+        >
           {enviando ? "Entrando…" : "Entrar"}
-        </button>
+        </Button>
       </form>
     </div>
   );

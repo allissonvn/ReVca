@@ -1,5 +1,9 @@
 /* Design system do editor (estilo Canva): tokens + componentes.
    O painel pode ser claro/escuro; a ARTE (página) é sempre clara. */
+@import "./estilos/tokens.css";
+
+/* Tokens legados (mantidos para compatibilidade com estilos das telas antigas).
+   Serão substituídos gradualmente pelos tokens do design system. */
 
 :root {
   --fundo: #eef0f4;
