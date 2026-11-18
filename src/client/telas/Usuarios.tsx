@@ -12,7 +12,7 @@ import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import { ApiErro, criarUsuario, definirUsuarioAtivo, listarUsuarios } from "../api.js";
 import { UsuarioResumo } from "../../shared/schema.js";
-import { estado, notificar, useEstado } from "../store.js";
+import { estado, notifier, useEstado } from "../store.js";
 import { Mark } from "../ui/Mark.js";
 import { Button } from "../ui/Button.js";
 import { Field } from "../ui/Field.js";
@@ -61,7 +61,7 @@ export function Usuarios(): JSX.Element {
       const atualizado = await definirUsuarioAtivo(u.id, !u.ativo);
       setUsuarios((atual) => (atual ?? []).map((x) => (x.id === atualizado.id ? atualizado : x)));
       setAviso(`${atualizado.nome} ${atualizado.ativo ? "ativado" : "desativado"}.`);
-      notificar();
+      notifier();
     } catch (e) {
       setErro(e instanceof ApiErro ? e.message : "Não foi possível alterar o usuário.");
     }
@@ -298,3 +298,5 @@ export function Usuarios(): JSX.Element {
     </div>
   );
 }
+
+

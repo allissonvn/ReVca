@@ -97,11 +97,13 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     const el = container.current;
     if (!el) return;
     limparSelecaoBlocoDOM();
-    const bloco = el.querySelector<HTMLElement>(`[data-bloco="${sel.bi}"]`);
-    if (bloco) {
-      bloco.style.outline = `2px solid var(--primary)`;
-      bloco.style.outlineOffset = "4px";
-      bloco.style.position = "relative";
+    const blocos = el.querySelectorAll<HTMLElement>(`[data-bloco]`);
+    blocos.forEach((b) => (b.style.outline = ""));
+    const alvo = el.querySelector<HTMLElement>(`[data-bloco="${sel.bi}"]`);
+    if (alvo) {
+      alvo.style.outline = `2px solid var(--primary)`;
+      alvo.style.outlineOffset = "4px";
+      alvo.style.position = "relative";
       const tag = document.createElement("div");
       tag.className = "bloco-tag";
       tag.textContent = `Bloco ${sel.bi + 1}`;
@@ -115,9 +117,28 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       tag.style.padding = "1px 6px";
       tag.style.borderRadius = "4px";
       tag.style.zIndex = "10";
-      bloco.prepend(tag);
+      alvo.prepend(tag);
     }
   }, [estado.blocoSelecionado]);
+
+  // Clique em bloco: seleciona no painel direito (Phase 4)
+  useLayoutEffect(() => {
+    const el = container.current;
+    if (!el) return;
+    const handler = (ev: MouseEvent) => {
+      const bloco = el.querySelector<HTMLElement>(`[data-bloco]`);
+      if (!bloco) return;
+      const bi = parseInt(bloco.dataset.bloco ?? "-1", 10);
+      if (isNaN(bi) || bi < 0) return;
+      // Evita capturar clique em header/aba/pilha
+      const alvo = ev.target as HTMLElement;
+      if (alvo.closest(".aba") || alvo.closest(".cabecalho") || alvo.closest(".pilha") || alvo.closest(".corpo")) return;
+      selecionarBloco(0, bi);
+      notificarConteudo();
+    };
+    el.addEventListener("click", handler);
+    return () => el.removeEventListener("click", handler);
+  }, [selecionarBloco, notificarConteudo]);
 
   function limparSelecaoBlocoDOM(): void {
     const el = container.current;

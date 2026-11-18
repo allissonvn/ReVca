@@ -9,7 +9,7 @@ import { Logo } from "../ui/Logo.js";
 import { Button } from "../ui/Button.js";
 import { Field } from "../ui/Field.js";
 import { login } from "../api.js";
-import { estado, notificar } from "../store.js";
+import { estado, notifier } from "../store.js";
 
 export function Login({ aoEntrar }: { aoEntrar: () => void }): JSX.Element {
   const [email, setEmail] = useState("");
@@ -25,7 +25,7 @@ export function Login({ aoEntrar }: { aoEntrar: () => void }): JSX.Element {
     try {
       const { usuario } = await login({ email: email.trim(), senha });
       estado.usuario = usuario;
-      notificar(); // re-render do App já mostra o app logado
+      notifier(); // re-render do App já mostra o app logado
       aoEntrar();
     } catch {
       // 401 ou qualquer falha: mensagem única, sem revelar detalhes
