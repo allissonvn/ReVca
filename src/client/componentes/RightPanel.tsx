@@ -17,6 +17,7 @@ import { IconButton } from "../ui/IconButton.js";
 import { Segmented } from "../ui/Segmented.js";
 import { Chip } from "../ui/Chip.js";
 import { CampoCor } from "./CampoCor.js";
+import { Field } from "../ui/Field.js";
 import {
   Shield,
   Eye,

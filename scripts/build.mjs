@@ -1,5 +1,6 @@
 ﻿// Build do projeto: empacota cliente (esbuild) e servidor/scripts (node),
-// copia fontes locais para dist/client/fonts. Roda com `npm run build`.
+// empacota o CSS (com os tokens e a fonte Inter) e copia fontes locais para
+// dist/client/fonts. Roda com `npm run build`.
 import { build } from "esbuild";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -60,8 +61,19 @@ await passo("html", () => {
   copyFileSync(join(raiz, "src/client/index.html"), join(raiz, "dist/client/index.html"));
 });
 
-await passo("estilos", () => {
-  copyFileSync(join(raiz, "src/client/styles.css"), join(raiz, "dist/client/styles.css"));
+await passo("estilos", async () => {
+  // styles.css importa ./estilos/tokens.css e @fontsource/inter. O esbuild
+  // resolve os @import e emite as fontes em dist/client/fonts — copiar o CSS
+  // "na mão" deixava os tokens fora do build (a tela do editor ficava sem
+  // layout e as miniaturas apareciam em tamanho real, empilhadas).
+  await build({
+    entryPoints: [join(raiz, "src/client/styles.css")],
+    outfile: join(raiz, "dist/client/styles.css"),
+    bundle: true,
+    loader: { ".woff2": "file", ".woff": "file", ".ttf": "file" },
+    assetNames: "fonts/[name]-[hash]",
+    logLevel: "warning",
+  });
 });
 
 // Fontes locais (@fontsource): woff2 latin que o CSS da arte referencia

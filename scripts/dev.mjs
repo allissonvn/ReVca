@@ -3,6 +3,7 @@
 // quando o bundle dele muda. Roda com `npm run dev`.
 import { context } from "esbuild";
 import { spawn } from "node:child_process";
+import { copyFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +79,21 @@ async function vigiarCliente() {
   await ctx.watch();
 }
 
+// CSS: bundle com os tokens e a fonte Inter (mesmo passo do build.mjs).
+// Sem isso o dev servia só o styles.css "cru" e o @import de
+// ./estilos/tokens.css dava 404 — o editor abria sem layout.
+async function vigiarCss() {
+  const ctx = await context({
+    entryPoints: [join(root, "src/client/styles.css")],
+    outfile: join(root, "dist/client/styles.css"),
+    bundle: true,
+    loader: { ".woff2": "file", ".woff": "file", ".ttf": "file" },
+    assetNames: "fonts/[name]-[hash]",
+    logLevel: "warning",
+  });
+  await ctx.watch();
+}
+
 // porta ocupada (ex.: servidor de outra sessão ainda de pé): aviso claro
 // em vez do stack trace de EADDRINUSE
 if (await portaEmUso(PORT)) {
@@ -86,6 +102,7 @@ if (await portaEmUso(PORT)) {
   process.exit(1);
 }
 
+copyFileSync(join(root, "src/client/index.html"), join(root, "dist/client/index.html"));
 subirServidor();
-await Promise.all([vigiarServidor(), vigiarCliente()]);
+await Promise.all([vigiarServidor(), vigiarCliente(), vigiarCss()]);
 console.log(`dev: pronto em http://127.0.0.1:${PORT} (Ctrl+C para sair)`);
