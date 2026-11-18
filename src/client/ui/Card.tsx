@@ -16,8 +16,8 @@ export function Card({ children, className }: CardProps): JSX.Element {
 import { Layers } from "lucide-react";
 
 type SectionProps = {
-  /** Título da seção. */
-  titulo: string;
+  /** Título da seção (opcional). */
+  titulo?: string;
   /** Ícone lucide (opcional). */
   icon?: React.ElementType;
   /** Conteúdo da seção. */
@@ -31,10 +31,12 @@ const IconePadrao = Layers;
 export function Section({ titulo, icon: Icone = IconePadrao, children, className }: SectionProps): JSX.Element {
   return (
     <div className={`section card ${className ?? ""}`}>
-      <div className="cabecalho">
-        <Icone aria-hidden="true" />
-        <h3>{titulo}</h3>
-      </div>
+      {titulo && (
+        <div className="cabecalho">
+          <Icone aria-hidden="true" />
+          <h3>{titulo}</h3>
+        </div>
+      )}
       {children}
     </div>
   );

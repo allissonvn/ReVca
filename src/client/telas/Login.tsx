@@ -1,6 +1,8 @@
 // Tela de login: primeiro gate do app. O servidor valida e-mail/senha e cria
 // a sessão via cookie HttpOnly (AGENTS.md §6).
-// UI: design system REVCA (Phase 1).
+// UI: design system REVCA — Phase 2.
+// Card centralizado (~360px) sobre --bg: Logo, subtítulo, E-mail, Senha,
+// botão Entrar full-width primário.
 import type { JSX } from "react";
 import { useState } from "react";
 import { Logo } from "../ui/Logo.js";

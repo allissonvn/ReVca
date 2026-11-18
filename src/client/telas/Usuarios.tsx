@@ -1,17 +1,49 @@
-import type { JSX } from "react";
 // Gestão de usuários (só admin): lista quem tem conta, cadastra novos
 // editor/leitor e ativa/desativa. Novo admin só nasce pelo primeiro acesso
 // (bootstrap). O leitor visualiza tudo, mas o servidor bloqueia a escrita.
+// UI: design system REVCA — Phase 2.
+// Header com Mark, "← Campanhas", título. Duas colunas:
+// esquerda: Section "Cadastrados (N)" com linhas (avatar, nome + "(você)",
+// e-mail muted, badge de papel, ● Ativo, Redefinir senha com chave,
+// Desativar com power em danger); direita 360px: Section "Novo usuário"
+// (Nome, E-mail, Senha ≥ 6, dois radio cards Leitor/Editor, "Cadastrar
+// usuário" com UserPlus). Campos não ocupam a largura total da página.
+import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import { ApiErro, criarUsuario, definirUsuarioAtivo, listarUsuarios } from "../api.js";
 import { UsuarioResumo } from "../../shared/schema.js";
 import { estado, notificar, useEstado } from "../store.js";
+import { Mark } from "../ui/Mark.js";
+import { Button } from "../ui/Button.js";
+import { Field } from "../ui/Field.js";
+import { Badge } from "../ui/Badge.js";
+import { Avatar } from "../ui/Avatar.js";
+import { ConfirmDialog } from "../ui/ConfirmDialog.js";
+import { Section } from "../ui/Card.js";
+import {
+  Shield,
+  KeyRound,
+  Power,
+  UserPlus,
+  ArrowLeft,
+} from "lucide-react";
 
 export function Usuarios(): JSX.Element {
   useEstado();
   const [usuarios, setUsuarios] = useState<UsuarioResumo[] | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const [excluindoNome, setExcluindoNome] = useState("");
+
+  // Estado local do formulário (declarado antes de qualquer uso)
+  const [form, setForm] = useState<{
+    nome: string;
+    email: string;
+    senha: string;
+    papel: "editor" | "leitor";
+    enviando: boolean;
+  }>({ nome: "", email: "", senha: "", papel: "leitor", enviando: false });
 
   useEffect(() => {
     void (async () => {
@@ -35,123 +67,234 @@ export function Usuarios(): JSX.Element {
     }
   }
 
-  return (
-    <div className="home">
-      <header className="topbar">
-        <button className="btn fantasma" onClick={() => { window.location.href = "/"; }} title="Voltar às campanhas">← Campanhas</button>
-        <h1>Usuários</h1>
-      </header>
-
-      <main className="home-conteudo usu-tela">
-        {erro !== "" && <p className="dica erro" role="alert">Erro: {erro}</p>}
-        {aviso !== "" && <p className="dica ok" role="status">{aviso}</p>}
-
-        <FormularioNovo aoCriado={(novo) => {
-          setUsuarios((atual) => [...(atual ?? []), novo]);
-          setAviso(`Usuário ${novo.nome} cadastrado como ${novo.papel}.`);
-        }} />
-
-        <section aria-label="Usuários cadastrados">
-          <h2>Cadastrados</h2>
-          {usuarios === null && <p className="dica">Carregando…</p>}
-          {usuarios !== null && (
-            <table className="usu-tabela">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>Papel</th>
-                  <th>Situação</th>
-                  <th aria-label="Ações"><span className="sr-only">Ações</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((u) => {
-                  const proprio = u.id === estado.usuario?.id;
-                  return (
-                    <tr key={u.id} className={u.ativo ? "" : "inativo"}>
-                      <td>{u.nome}{proprio && <small> (você)</small>}</td>
-                      <td>{u.email}</td>
-                      <td><span className={`badge-papel ${u.papel}`}>{u.papel}</span></td>
-                      <td><span className={`badge-situacao ${u.ativo ? "ativo" : "inativo"}`}>{u.ativo ? "Ativo" : "Inativo"}</span></td>
-                      <td className="usu-acoes">
-                        <button
-                          className={`btn pequeno ${u.ativo ? "perigo" : "primario"}`}
-                          disabled={proprio}
-                          title={proprio ? "Você não pode desativar a si mesmo" : u.ativo ? "Desativar acesso deste usuário" : "Reativar acesso deste usuário"}
-                          onClick={() => void alternarAtivo(u)}
-                        >
-                          {u.ativo ? "Desativar" : "Ativar"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-/** Formulário de cadastro: papel limitado a editor/leitor — novo admin só
- *  pelo primeiro acesso ao sistema (bootstrap), decisão em DECISOES.md. */
-function FormularioNovo({ aoCriado }: { aoCriado: (u: UsuarioResumo) => void }): JSX.Element {
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [papel, setPapel] = useState<"editor" | "leitor">("leitor");
-  const [erro, setErro] = useState("");
-  const [enviando, setEnviando] = useState(false);
-
-  async function enviar(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    if (enviando) return;
+  async function criarNovo({
+    nome,
+    email,
+    senha,
+    papel,
+  }: {
+    nome: string;
+    email: string;
+    senha: string;
+    papel: "editor" | "leitor";
+  }): Promise<void> {
     setErro("");
-    setEnviando(true);
     try {
       const novo = await criarUsuario({ nome: nome.trim(), email: email.trim(), senha, papel });
-      aoCriado(novo);
-      setNome(""); setEmail(""); setSenha(""); setPapel("leitor");
+      setUsuarios((atual) => [...(atual ?? []), novo]);
+      setAviso(`Usuário ${novo.nome} cadastrado como ${novo.papel}.`);
     } catch (e2) {
       if (e2 instanceof ApiErro && e2.status === 409) setErro("Este e-mail já está cadastrado.");
       else if (e2 instanceof ApiErro && e2.status === 422) setErro("Confira os campos: e-mail válido e senha de 6 caracteres ou mais.");
       else if (e2 instanceof ApiErro && e2.status === 403) setErro("Somente o administrador pode cadastrar usuários.");
       else setErro("Não foi possível cadastrar. Tente novamente.");
+    }
+  }
+
+  const usuarioLogado = estado.usuario;
+  const iniciais = usuarioLogado?.nome
+    ?.split(" ")
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) ?? "?";
+
+  async function enviarForm(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    if (form.enviando) return;
+    setForm((a) => ({ ...a, enviando: true }));
+    try {
+      await criarNovo({
+        nome: form.nome,
+        email: form.email,
+        senha: form.senha,
+        papel: form.papel,
+      });
+      setForm({ nome: "", email: "", senha: "", papel: "leitor", enviando: false });
     } finally {
-      setEnviando(false);
+      setForm((a) => ({ ...a, enviando: false }));
     }
   }
 
   return (
-    <form className="usu-form" onSubmit={(e) => void enviar(e)} aria-label="Cadastrar novo usuário">
-      <h2>Novo usuário</h2>
-      <p className="dica">O leitor visualiza todas as campanhas; o editor também cria e edita.</p>
-      <div className="usu-campos">
-        <label htmlFor="usu-nome">Nome</label>
-        <input id="usu-nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
-      </div>
-      <div className="usu-campos">
-        <label htmlFor="usu-email">E-mail</label>
-        <input id="usu-email" type="email" autoComplete="off" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div className="usu-campos">
-        <label htmlFor="usu-senha">Senha (mínimo 6 caracteres)</label>
-        <input id="usu-senha" type="password" autoComplete="new-password" minLength={6} required value={senha} onChange={(e) => setSenha(e.target.value)} />
-      </div>
-      <div className="usu-campos">
-        <label htmlFor="usu-papel">Papel</label>
-        <select id="usu-papel" value={papel} onChange={(e) => setPapel(e.target.value as "editor" | "leitor")}>
-          <option value="leitor">Leitor — só visualiza</option>
-          <option value="editor">Editor — cria e edita campanhas</option>
-        </select>
-      </div>
-      {erro !== "" && <p className="dica erro" role="alert">{erro}</p>}
-      <button className="btn primario" type="submit" disabled={enviando}>
-        {enviando ? "Cadastrando…" : "Cadastrar usuário"}
-      </button>
-    </form>
+    <div className="usu-tela">
+      <header className="topbar">
+        <button
+          className="btn fantasma"
+          onClick={() => { window.location.href = "/"; }}
+          title="Voltar às campanhas"
+        >
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
+          ← Campanhas
+        </button>
+        <Mark tamanho={32} aria-label="REVCA — Usuários" />
+        <h1>Usuários</h1>
+      </header>
+
+      <main className="usu-conteudo">
+        {erro !== "" && <p className="dica erro" role="alert">Erro: {erro}</p>}
+        {aviso !== "" && <p className="dica ok" role="status">{aviso}</p>}
+
+        <div className="usu-grid">
+          {/* Coluna esquerda: cadastrados */}
+          <Section>
+            <div className="usu-cabecalho">
+              <h2>Cadastrados ({usuarios?.length ?? 0})</h2>
+            </div>
+            {usuarios === null && <p className="dica">Carregando…</p>}
+            {usuarios !== null && usuarios.length === 0 && (
+              <p className="dica">Nenhum usuário cadastrado ainda.</p>
+            )}
+            {usuarios !== null && usuarios.length > 0 && (
+              <div className="usu-lista">
+                {usuarios.map((u) => {
+                  const proprio = u.id === estado.usuario?.id;
+                  return (
+                    <div key={u.id} className={`usu-linha ${u.ativo ? "" : "usu-inativo"}`}>
+                      <div className="usu-info">
+                        <Avatar
+                          iniciais={u.nome.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)}
+                          aria-label={u.nome}
+                        />
+                        <div className="usu-dados">
+                          <div className="usu-nome">
+                            {u.nome}{proprio && <span className="usu-proprio"> (você)</span>}
+                          </div>
+                          <div className="usu-email">{u.email}</div>
+                        </div>
+                        <Badge variante={u.papel === "admin" ? "admin" : u.papel === "editor" ? "editor" : "leitor"}>
+                          {u.papel.charAt(0).toUpperCase() + u.papel.slice(1)}
+                        </Badge>
+                        <div className="usu-status">
+                          <span className={`usu-pontinho ${u.ativo ? "ativo" : "inativo"}`} aria-hidden="true"></span>
+                          {u.ativo ? "● Ativo" : "● Inativo"}
+                        </div>
+                      </div>
+                      <div className="usu-acoes">
+                        {!proprio && (
+                          <Button
+                            variant="ghost"
+                            icon="KeyRound"
+                            title="Redefinir senha deste usuário"
+                            onClick={() => {
+                              // Phase 5: chama POST /api/auth/usuarios/:id/redefinir-senha
+                              setAviso("Redefinição de senha será liberada na próxima etapa.");
+                            }}
+                          />
+                        )}
+                        {!proprio && (
+                          <Button
+                            variant="ghost"
+                            icon="Power"
+                            cor="danger"
+                            title={u.ativo ? "Desativar acesso deste usuário" : "Reativar acesso deste usuário"}
+                            onClick={() => {
+                              if (!excluindoId || excluindoId !== u.id) {
+                                setExcluindoId(u.id);
+                                setExcluindoNome(u.nome);
+                              } else {
+                                void alternarAtivo(u);
+                                setExcluindoId(null);
+                                setExcluindoNome("");
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
+          {/* Coluna direita: novo usuário */}
+          <Section>
+            <h2>Novo usuário</h2>
+            <p className="dica">O leitor visualiza todas as campanhas; o editor também cria e edita.</p>
+            <form className="usu-form" onSubmit={(e) => void enviarForm(e)} aria-label="Cadastrar novo usuário">
+              <Field
+                label="Nome"
+                name="nome"
+                id="usu-nome"
+                value={form.nome}
+                onChange={(e) => setForm((a) => ({ ...a, nome: e.target.value }))}
+                required
+              />
+              <Field
+                label="E-mail"
+                type="email"
+                name="email"
+                id="usu-email"
+                value={form.email}
+                onChange={(e) => setForm((a) => ({ ...a, email: e.target.value }))}
+                required
+                autoComplete="off"
+              />
+              <Field
+                label="Senha (mínimo 6 caracteres)"
+                type="password"
+                name="senha"
+                id="usu-senha"
+                value={form.senha}
+                onChange={(e) => setForm((a) => ({ ...a, senha: e.target.value }))}
+                required
+                autoComplete="new-password"
+              />
+              <fieldset className="usu-radio">
+                <legend>Papel</legend>
+                <div className="usu-radio-opcoes">
+                  <label className="usu-radio-card">
+                    <input
+                      type="radio"
+                      name="papel"
+                      value="leitor"
+                      checked={form.papel === "leitor"}
+                      onChange={() => setForm((a) => ({ ...a, papel: "leitor" }))}
+                    />
+                    <Shield size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>Leitor</span>
+                    <span className="usu-radio-desc">Só visualiza e exporta.</span>
+                  </label>
+                  <label className="usu-radio-card">
+                    <input
+                      type="radio"
+                      name="papel"
+                      value="editor"
+                      checked={form.papel === "editor"}
+                      onChange={() => setForm((a) => ({ ...a, papel: "editor" }))}
+                    />
+                    <Shield size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>Editor</span>
+                    <span className="usu-radio-desc">Cria e edita campanhas.</span>
+                  </label>
+                </div>
+              </fieldset>
+              {erro !== "" && <p className="dica erro" role="alert">{erro}</p>}
+              <Button variant="primary" type="submit" disabled={form.enviando}>
+                {form.enviando ? "Cadastrando…" : "Cadastrar usuário"} <UserPlus size={16} strokeWidth={2} />
+              </Button>
+            </form>
+          </Section>
+        </div>
+
+        {excluindoId && (
+          <ConfirmDialog
+            aberto={true}
+            titulo="Desativar usuário?"
+            mensagem={`Tem certeza que deseja desativar “${excluindoNome}”?`}
+            confirmarRotulo="Desativar"
+            cancelarRotulo="Cancelar"
+            aoConfirmar={() => {
+              const u = (usuarios ?? []).find((x) => x.id === excluindoId);
+              if (u) void alternarAtivo(u);
+              setExcluindoId(null);
+              setExcluindoNome("");
+            }}
+            aoCancelar={() => { setExcluindoId(null); setExcluindoNome(""); }}
+          />
+        )}
+      </main>
+    </div>
   );
 }

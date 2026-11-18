@@ -155,3 +155,12 @@
 - Focus ring visível (2px `--primary-text`) em todos elementos interativos.
 - `prefers-reduced-motion` respeitado.
 - Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.
+
+### Phase 2 — Login, Home, Usuários (visual only, concluída)
+- `Login.tsx`: mantido com `Logo`, `Button`, `Field`. Card ~360px centralizado, subtítulo "Entre com sua conta para gerenciar as campanhas.", E-mail, Senha, Entrar full-width primário.
+- `Home.tsx`: reescrito conforme specs. Top bar 56px `--surface` com `Logo` à direita: Shield + nome usuário, toggle tema (Sun/Moon), "Usuários" (só admin), "Sair". Cabeçalho com heading "Campanhas", `SearchField` (máx 360px), chips de mês (selecionado usa `--selected` e `--primary` border), "Nova campanha". Grade de cards 300px: miniatura página 1 (200px alta), meta com ícone Calendar (`MES · N pág.`, `--primary-text`, 12px bold), título completo (wrap, sem ellipsis), "Editado em…", ações: "Abrir" primário com ArrowRight + ícones Duplicar (CopyPlus) e Excluir (Trash2, danger, `ConfirmDialog`). Último tile: "Criar a partir da anterior" (CopyPlus, borda tracejada). Estado vazio com CTA.
+- `Usuarios.tsx`: reescrito conforme specs. Header com `Mark`, "← Campanhas", título. Duas colunas: esquerda `Section` "Cadastrados (N)" com linhas (avatar, nome + "(você)", e-mail muted, badge papel, ● Ativo/Inativo, Redefinir senha com KeyRound, Desativar com Power danger); direita 360px `Section` "Novo usuário": Nome, E-mail, Senha (≥6), dois radio cards Leitor/Editor com Shield, "Cadastrar usuário" com `UserPlus`. Campos não ocupam largura total.
+- `tokens.css`: adicionados estilos para login, topbar, home, usuarios, chips selecionado, cartões, rádio cards, pontinhos de status.
+- `Card.tsx`: `Section.titulo` tornado opcional.
+- `Button.tsx`: adicionadas props `title` e `cor`; importados ícones KeyRound, Power, UserPlus, Search, CopyPlus, Sun, Moon, Shield.
+- Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.

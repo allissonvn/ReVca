@@ -1,6 +1,12 @@
 // Tela inicial: grade de campanhas com miniatura real da 1ª página (mesmo
 // render.ts), busca e ações (abrir, duplicar, excluir).
-// UI: design system REVCA (Phase 1).
+// UI: design system REVCA — Phase 2.
+// Top bar (56px, --surface): Logo à esquerda; à direita: shield + nome do
+// usuário, toggle de tema, "Usuários" (só admin), "Sair".
+// Linha: heading "Campanhas", SearchField, chips de mês, spacer, "Nova campanha".
+// Grade de cards (300px): miniatura da página 1, meta com ícone do calendário,
+// título completo (sem ellipsis), "Editado em…", ações: "Abrir" (primário) +
+// ícones Duplicar e Excluir (ConfirmDialog).
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { artCss, renderCampanha } from "../../shared/render.js";
@@ -128,6 +134,8 @@ export function Home(): JSX.Element {
     .toUpperCase()
     .slice(0, 2) ?? "?";
 
+  const TemaIcone = estado.tema === "escuro" ? Sun : Moon;
+
   return (
     <div className="home">
       <header className="topbar">
@@ -135,14 +143,7 @@ export function Home(): JSX.Element {
         <div className="topbar-acoes">
           {usuario !== null && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                className="avatar"
-                style={{ width: 32, height: 32, fontSize: 14 }}
-                aria-label={`Conectado como ${usuario.email}`}
-                aria-hidden="false"
-              >
-                {iniciais}
-              </span>
+              <Shield className="topbar-icone" aria-hidden="true" />
               <span className="dica" title={`Conectado como ${usuario.email}`}>
                 {usuario.nome} ({usuario.papel})
               </span>
@@ -154,7 +155,7 @@ export function Home(): JSX.Element {
             aria-label="Alternar tema do painel (a arte é sempre clara)"
             onClick={alternarTema}
           >
-            <svg className="btn-icone" aria-hidden="true" {...(estado.tema === "escuro" ? <Sun /> : <Moon />)} />
+            <TemaIcone className="btn-icone" aria-hidden="true" />
           </button>
           {ehAdmin() && (
             <Button variant="ghost" onClick={() => { window.location.href = "/?tela=usuarios"; }}>
@@ -168,7 +169,7 @@ export function Home(): JSX.Element {
             title="Encerrar a sessão"
             onClick={() => void sair()}
           >
-            <svg className="btn-icone" aria-hidden="true"><LogOut /></svg>
+            <LogOut className="btn-icone" aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -205,6 +206,7 @@ export function Home(): JSX.Element {
 
         {filtrados.length === 0 && itens !== null && (
           <div className="home-vazio">
+            <Calendar className="vazio-icone" aria-hidden="true" />
             <p className="dica">{editor ? "Nenhuma campanha ainda. Clique em “+ Nova campanha”." : "Nenhuma campanha ainda."}</p>
             {editor && <Button variant="primary" onClick={() => void nova()}>+ Nova campanha</Button>}
           </div>
@@ -223,9 +225,9 @@ export function Home(): JSX.Element {
             />
           ))}
           {editor && (
-            <article className="cam-card cam-card-vazio">
+            <article className="cam-card cam-card-vazio" onClick={() => duplicarNovo()}>
               <div className="cam-mini cam-mini-vazia">
-                <svg className="btn-icone" aria-hidden="true" style={{ width: 32, height: 32, color: "#9aa0ac" }}><CopyPlus /></svg>
+                <CopyPlus className="btn-icone" aria-hidden="true" style={{ color: "#9aa0ac" }} />
               </div>
               <div className="cam-info">
                 <h3>Criar a partir da anterior</h3>
@@ -249,6 +251,14 @@ export function Home(): JSX.Element {
       </main>
     </div>
   );
+
+  function duplicarNovo(): void {
+    const mes = window.prompt("Duplicar para qual mês? (em maiúsculas, ex.: DEZEMBRO)", "DEZEMBRO");
+    if (!mes) return;
+    void criarCampanha({ duplicarDe: filtrados[0]?.resumo.id ?? "", mes }).then((nova) => {
+      window.location.href = `/?campanha=${encodeURIComponent(nova.id)}`;
+    });
+  }
 }
 
 function CartaoCampanha({
@@ -280,11 +290,11 @@ function CartaoCampanha({
       data-id={r.id}
       onClick={() => { window.location.href = `/?campanha=${encodeURIComponent(r.id)}`; }}
     >
-      <div className="cam-mini" style={{ '--cam-mini-w': LARGURA_MINI, '--cam-mini-h': Math.round(1308 * escala) } as React.CSSProperties}>
+      <div className="cam-mini" style={{ '--cam-mini-w': LARGURA_MINI, '--cam-mini-h': 200 } as React.CSSProperties}>
         {primeira && catalogos ? (
           <div
             className="cam-mini-escala"
-            style={{ transform: `scale(${escala})`, width: LARGURA_MINI, height: Math.round(1308 * escala) }}
+            style={{ transform: `scale(${200 / 1308})`, width: LARGURA_MINI, height: 200 }}
             dangerouslySetInnerHTML={{ __html: renderCampanha({ ...dados, paginas: [primeira] }, catalogos) }}
           />
         ) : (
@@ -293,8 +303,8 @@ function CartaoCampanha({
       </div>
       <div className="cam-info">
         <div className="cam-linha1">
-          <span className="badge-mes">{r.mes}</span>
-          <small>{r.nPaginas} pág. · {data}</small>
+          <Calendar size={14} strokeWidth={2} aria-hidden="true" />
+          <span className="badge-mes">{r.mes} · {r.nPaginas} pág.</span>
         </div>
         <h3 className="cam-titulo">{r.titulo}</h3>
         <p className="dica">Editado em {data}</p>
@@ -310,7 +320,7 @@ function CartaoCampanha({
             aria-label={`Duplicar ${r.titulo}`}
             onClick={onDuplicar}
           >
-            <svg className="btn-icone" aria-hidden="true"><CopyPlus /></svg>
+            <CopyPlus className="btn-icone" aria-hidden="true" />
           </button>
         )}
         {editor && (
@@ -320,7 +330,7 @@ function CartaoCampanha({
             aria-label={`Excluir ${r.titulo}`}
             onClick={onExcluir}
           >
-            <svg className="btn-icone" aria-hidden="true"><Trash2 /></svg>
+            <Trash2 className="btn-icone" aria-hidden="true" />
           </button>
         )}
       </div>
