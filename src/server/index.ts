@@ -172,12 +172,22 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
   app.patch("/api/auth/usuarios/:id", requerSessao, requerAdmin, (req: ReqComUsuario, res) => {
     const id = req.params.id!;
     if (id === req.usuario!.id) {
-      res.status(400).json({ erro: "não é possível ativar/desativar o próprio usuário" });
+      res.status(400).json({ erro: "não é possível alterar o próprio usuário" });
       return;
     }
     try {
-      const { ativo } = AlterarUsuarioSchema.parse(req.body);
-      const usuario = auth.definirAtivo(id, ativo);
+      const { ativo, papel, senha } = AlterarUsuarioSchema.parse(req.body);
+      let usuario;
+      if (senha !== undefined) {
+        usuario = auth.redefinirSenha(id);
+      } else if (papel !== undefined) {
+        usuario = auth.alterarPapel(id, papel);
+      } else if (ativo !== undefined) {
+        usuario = auth.definirAtivo(id, ativo);
+      } else {
+        res.status(400).json({ erro: "é necessário informar 'ativo', 'papel' ou 'senha'" });
+        return;
+      }
       if (!usuario) {
         res.status(404).json({ erro: "usuário não encontrado" });
         return;

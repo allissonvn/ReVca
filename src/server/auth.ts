@@ -39,6 +39,10 @@ export type Autenticacao = {
   validarSessao: (token: string) => Usuario | null;
   /** Resumo do usuário para expor ao cliente (sem senha). */
   usuarioResumo: (u: Usuario) => UsuarioResumo;
+  /** Altera o papel de um usuário (só admin). Retorna o resumo atualizado ou null se não existir. */
+  alterarPapel: (id: string, papel: Papel) => UsuarioResumo | null;
+  /** Redefine a senha de um usuário (só admin). Retorna o resumo atualizado ou null se não existir. */
+  redefinirSenha: (id: string) => UsuarioResumo | null;
 };
 
 export function criarAutenticacao(raizDados?: string): Autenticacao {
@@ -192,9 +196,35 @@ export function criarAutenticacao(raizDados?: string): Autenticacao {
     return linhaParaUsuario(u);
   };
 
+  const alterarPapel = (id: string, papel: Papel): UsuarioResumo | null => {
+    // Só o admin pode alterar papel; a verificação fica na rota
+    const r = db.prepare("UPDATE usuarios SET papel = ? WHERE id = ?").run(papel, id);
+    if (r.changes === 0) return null;
+    const linha = db
+      .prepare("SELECT * FROM usuarios WHERE id = ?")
+      .get(id) as
+      | { id: string; nome: string; email: string; senha_hash: string; papel: string; ativo: number; criado_em: string }
+      | undefined;
+    return linha ? usuarioParaResumo(linhaParaUsuario(linha)) : null;
+  };
+
+  const redefinirSenha = (id: string): UsuarioResumo | null => {
+    // Só o admin pode redefinir senha; gera uma senha temporária "admin123"
+    const tempSenha = "admin123";
+    const senhaHash = hashSenha(tempSenha);
+    const r = db.prepare("UPDATE usuarios SET senha_hash = ? WHERE id = ?").run(senhaHash, id);
+    if (r.changes === 0) return null;
+    const linha = db
+      .prepare("SELECT * FROM usuarios WHERE id = ?")
+      .get(id) as
+      | { id: string; nome: string; email: string; senha_hash: string; papel: string; ativo: number; criado_em: string }
+      | undefined;
+    return linha ? usuarioParaResumo(linhaParaUsuario(linha)) : null;
+  };
+
   const usuarioResumo = (u: Usuario): UsuarioResumo => usuarioParaResumo(u);
 
-  return { cadastrarUsuario, listarUsuarios, totalUsuarios, definirAtivo, login, logout, validarSessao, usuarioResumo };
+  return { cadastrarUsuario, listarUsuarios, totalUsuarios, definirAtivo, login, logout, validarSessao, usuarioResumo, alterarPapel, redefinirSenha };
 }
 
 /** Converte a linha do SQLite em Usuario (papel validado contra o enum). */
