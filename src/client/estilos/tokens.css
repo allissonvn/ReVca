@@ -813,31 +813,31 @@ a:focus-visible,
 /* ---------- corpo do editor (3 colunas) ---------- */
 .editor-corpo {
   display: grid;
-  /* canvas coluna usa max-content para acompanhar o zoom da moldura */
-  grid-template-columns: 272px minmax(0, max-content) 360px;
+  /* colunas fixas: rail 272px | canvas 1fr (resto) | panel 360px */
+  grid-template-columns: 272px 1fr 360px;
   grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   gap: 0;
 }
 @media (max-width: 1280px) {
-  .editor-corpo { grid-template-columns: 240px minmax(0, max-content) 300px; }
+  .editor-corpo { grid-template-columns: 240px 1fr 300px; }
 }
 @media (max-width: 1100px) {
   .editor-corpo { grid-template-columns: 1fr; grid-template-rows: auto; }
 }
 /* leitor: sem coluna de edição à direita */
-.editor-corpo.leitor { grid-template-columns: 272px minmax(0, max-content); }
+.editor-corpo.leitor { grid-template-columns: 272px 1fr; }
 @media (max-width: 1280px) {
-  .editor-corpo.leitor { grid-template-columns: 240px minmax(0, max-content); }
+  .editor-corpo.leitor { grid-template-columns: 240px 1fr; }
 }
 @media (max-width: 1100px) {
   .editor-corpo.leitor { grid-template-columns: 1fr; }
 }
 
-/* editor container permite scroll horizontal quando canvas cresce com zoom */
+/* editor container: sem overflow horizontal global (o canvas cuida do seu scroll) */
 .editor {
-  overflow-x: auto;
+  /* overflow-x: auto; -- removido: canvas tem scroll interno */
 }
 
 /* ---------- left rail ---------- */
@@ -932,23 +932,20 @@ a:focus-visible,
 
 /* ---------- canvas ---------- */
 .canvas {
-  /* sem overflow auto: o próprio canvas cresce/encolhe com o zoom */
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
   background: var(--canvas);
   min-height: 100%;
+  overflow-x: auto;
 }
 .canvas .moldura {
   border-radius: 4px;
   box-shadow: var(--shadow);
   background: #fff;
   cursor: default;
-  /* tamanho base; escala aplicada via transform no Canvas component */
+  /* tamanho base; escala aplicada via width/height no Canvas component */
   width: 924px;
   height: 1308px;
+  margin: 0 auto; /* centraliza e permite scroll horizontal bilateral */
   transform-origin: center top;
   will-change: transform;
 }
