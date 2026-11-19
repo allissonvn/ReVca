@@ -945,11 +945,12 @@ a:focus-visible,
   display: flex;
   justify-content: center;
 }
-/* zoom-bar fixa no canto inferior direito do viewport */
+/* zoom-bar fixa no centro inferior do viewport */
 .zoom-bar {
   position: fixed;
-  right: 24px;
+  left: 50%;
   bottom: 24px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
