@@ -97,7 +97,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
           title="Salvar e voltar às campanhas"
         >
           <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
-          ← Campanhas
+          Campanhas
         </button>
         <Mark tamanho={32} aria-label="REVCA — Editor" />
         <div className="topbar-campanha">
@@ -179,7 +179,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
       {statusExport !== "" && <div className="faixa-export" role="status">{statusExport}</div>}
 
       {/* ===== Corpo: left rail | canvas | right panel ===== */}
-      <div className="editor-corpo">
+      <div className={`editor-corpo${leitor ? " leitor" : ""}`}>
         <LeftRail estouros={estouros} somenteLeitura={leitor} />
         <Canvas estouros={estouros} aoEstouro={setEstouros} />
         {!leitor && <RightPanel onDuplicar={() => void duplicar()} />}

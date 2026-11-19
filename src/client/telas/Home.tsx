@@ -9,7 +9,7 @@
 // ícones Duplicar e Excluir (ConfirmDialog).
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
-import { artCss, renderCampanha } from "../../shared/render.js";
+import { artCssEscopo, renderCampanha } from "../../shared/render.js";
 import { Campanha, Catalogos } from "../../shared/schema.js";
 import {
   CampanhaResumo,
@@ -64,9 +64,10 @@ export function Home(): JSX.Element {
   }, [itens]);
 
   useEffect(() => {
-    // injeta o CSS da arte uma vez (miniaturas usam as mesmas classes)
+    // injeta o CSS da arte uma vez, ESCOPADO em ".arte" (senão classes da arte
+    // vazam para a UI — ex.: .cabecalho com 150px nas seções do editor)
     const style = document.createElement("style");
-    style.textContent = artCss();
+    style.textContent = artCssEscopo(".arte");
     document.head.appendChild(style);
     void (async () => {
       try {
@@ -293,7 +294,7 @@ function CartaoCampanha({
       <div className="cam-mini" style={{ '--cam-mini-w': LARGURA_MINI, '--cam-mini-h': 200 } as React.CSSProperties}>
         {primeira && catalogos ? (
           <div
-            className="cam-mini-escala"
+            className="cam-mini-escala arte"
             style={{ transform: `scale(${200 / 1308})`, width: LARGURA_MINI, height: 200 }}
             dangerouslySetInnerHTML={{ __html: renderCampanha({ ...dados, paginas: [primeira] }, catalogos) }}
           />

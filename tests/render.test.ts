@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { renderCampanha, renderDocumento, artCss, modeloPorId } from "../src/shared/render.js";
+import { renderCampanha, renderDocumento, artCss, artCssEscopo, modeloPorId } from "../src/shared/render.js";
 import { Catalogos, CampanhaSchema, ModeloSchema, TipoBlocoSchema, TituloProntoSchema, EmpreendimentoSchema } from "../src/shared/schema.js";
 
 function carregarCatalogos(): Catalogos {
@@ -180,6 +180,28 @@ describe("renderCampanha", () => {
     // altura do modelo × 1,5 de largura, com object-fit:contain
     expect(artCss()).toContain(".logo-area img{height:100%;width:calc(var(--logo) * 1.5);object-fit:contain}");
     expect(artCss()).toContain("logo-ph");
+  });
+
+  it("artCssEscopo aninha todos os seletores da arte dentro do container", () => {
+    const esc = artCssEscopo(".arte");
+    // seletor simples, comum e o curingal
+    expect(esc).toContain(".arte .pagina{");
+    expect(esc).toContain(".arte .faixa-verde{");
+    expect(esc).toContain(".arte *{");
+    // vários seletores na mesma regra: cada um ganha o escopo
+    expect(esc).toContain(".arte .chip,.arte .chip-titulo{");
+    // NADA da arte pode sobrar sem escopo (senão vaza para a UI do editor)
+    expect(esc).not.toMatch(/(^|[}])\s*\.pagina\{/);
+    expect(esc).not.toMatch(/(^|[}])\s*\.cabecalho\{/);
+    expect(esc).not.toMatch(/(^|[}])\s*\*\{/);
+    // font-face continua global: miniaturas e página usam as mesmas fontes
+    expect(esc).toContain('@font-face{font-family:"Anton"');
+    expect(esc.match(/@font-face/g)?.length).toBe(artCss().match(/@font-face/g)?.length);
+  });
+
+  it("artCss segue cru para o exportador (documento inteiro é a arte)", () => {
+    expect(artCss()).toContain(".pagina{position:relative");
+    expect(artCss()).not.toContain(".arte ");
   });
 
   it("empreendimento sem logo mostra marcador tracejado", () => {

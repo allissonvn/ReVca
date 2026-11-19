@@ -4,7 +4,7 @@
 // Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
 import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
-import { artCss, renderCampanha, renderPagina } from "../../shared/render.js";
+import { artCssEscopo, renderPagina } from "../../shared/render.js";
 import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco, definirZoom, alternarAjusteTela } from "../store.js";
 import { ZoomBar } from "./ZoomBar.js";
 
@@ -27,8 +27,10 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
 
   useLayoutEffect(() => {
     if (!cssInjetado.current) {
+      // escopado em ".arte": classes genéricas da arte (.cabecalho, .faixa-verde)
+      // não podem vazar para a UI dos painéis
       const style = document.createElement("style");
-      style.textContent = artCss();
+      style.textContent = artCssEscopo(".arte");
       document.head.appendChild(style);
       cssInjetado.current = true;
     }
@@ -52,15 +54,16 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     });
   }
 
-  /** Altura real do conteúdo, em px da arte (ignora absolutos — a marca d'água
-   *  sai da página de propósito). Corrige pela escala da moldura. */
+  /** Altura real do conteúdo, em px da arte. Elementos absolutos são a marca
+   *  d'água (que sai da página de propósito) e as tags de seleção do editor —
+   *  não contam como conteúdo; sem isso a página "estourava" falsamente. */
   function alturaConteudo(pag: HTMLElement): number {
     const rect = pag.getBoundingClientRect();
     const escala = rect.width / LARGURA_PAGINA || 1;
     let max = ALTURA_PAGINA;
     pag.querySelectorAll<HTMLElement>("*").forEach((filho) => {
       const st = getComputedStyle(filho);
-      // Incluir altura de todos os elementos, inclusive positionados
+      if (st.position === "absolute" || st.position === "fixed") return;
       const fundo = (filho.getBoundingClientRect().bottom - rect.top) / escala;
       if (fundo > max) max = fundo;
     });
@@ -74,12 +77,12 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     const mapa = new Map<string, number>();
     el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
       const conteudo = alturaConteudo(pag);
-      const escalaAtual = pag.clientWidth / LARGURA_PAGINA || 1;
-      if (conteudo > TEM_ESTOURO * escalaAtual) {
+      // comparação em px da arte: alturaConteudo já corrige pela escala
+      if (conteudo > TEM_ESTOURO) {
         mapa.set(pag.dataset.pagina ?? "", conteudo);
         const aviso = document.createElement("div");
         aviso.className = "aviso-estouro";
-        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de ${1308 * escalaAtual}px. O que passar será cortado no PDF.`;
+        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de ${ALTURA_PAGINA}px. O que passar será cortado no PDF.`;
         pag.closest(".moldura")?.before(aviso);
       }
     });
@@ -93,50 +96,55 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   // Destaca o bloco selecionado com outline + name tag
   useLayoutEffect(() => {
     const sel = estado.blocoSelecionado;
-    if (!sel) {
-      limparSelecaoBlocoDOM();
-      return;
-    }
     const el = container.current;
-    if (!el) return;
     limparSelecaoBlocoDOM();
-    const blocos = el.querySelectorAll<HTMLElement>(`[data-bloco]`);
-    blocos.forEach((b) => (b.style.outline = ""));
-    const alvo = el.querySelector<HTMLElement>(`[data-bloco="${sel.bi}"]`);
-    if (alvo) {
-      alvo.style.outline = `2px solid var(--primary)`;
-      alvo.style.outlineOffset = "4px";
-      alvo.style.position = "relative";
-      const tag = document.createElement("div");
-      tag.className = "bloco-tag";
-      tag.textContent = `Bloco ${sel.bi + 1}`;
-      tag.style.position = "absolute";
-      tag.style.top = "-16px";
-      tag.style.left = "4px";
-      tag.style.background = "var(--primary)";
-      tag.style.color = "#0b1020";
-      tag.style.fontSize = "10px";
-      tag.style.fontWeight = "700";
-      tag.style.padding = "1px 6px";
-      tag.style.borderRadius = "4px";
-      tag.style.zIndex = "10";
-      alvo.prepend(tag);
-    }
-  }, [estado.blocoSelecionado]);
+    if (!sel || !el) return;
+    // data-bloco guarda o ID do bloco (não o índice): resolve pelo modelo
+    const pagina = estado.campanha?.paginas[estado.pagSelecionada];
+    const bloco = pagina?.cartoes[sel.ci]?.blocos[sel.bi];
+    if (!bloco) return;
+    const alvo = Array.from(el.querySelectorAll<HTMLElement>("[data-bloco]"))
+      .find((b) => b.dataset.bloco === bloco.id);
+    if (!alvo) return;
+    alvo.style.outline = `2px solid var(--primary)`;
+    alvo.style.outlineOffset = "4px";
+    alvo.style.position = "relative";
+    const tag = document.createElement("div");
+    tag.className = "bloco-tag";
+    tag.textContent = `Bloco ${sel.bi + 1}`;
+    tag.style.position = "absolute";
+    tag.style.top = "-16px";
+    tag.style.left = "4px";
+    tag.style.background = "var(--primary)";
+    tag.style.color = "#0b1020";
+    tag.style.fontSize = "10px";
+    tag.style.fontWeight = "700";
+    tag.style.padding = "1px 6px";
+    tag.style.borderRadius = "4px";
+    tag.style.zIndex = "10";
+    alvo.prepend(tag);
+  }, [estado.blocoSelecionado, estado.pagSelecionada, estado.verTodas]);
 
   // Clique em bloco: seleciona no painel direito (Phase 4)
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
     const handler = (ev: MouseEvent) => {
-      const bloco = el.querySelector<HTMLElement>(`[data-bloco]`);
-      if (!bloco) return;
-      const bi = parseInt(bloco.dataset.bloco ?? "-1", 10);
-      if (isNaN(bi) || bi < 0) return;
-      // Evita capturar clique em header/aba/pilha
-      const alvo = ev.target as HTMLElement;
-      if (alvo.closest(".aba") || alvo.closest(".cabecalho") || alvo.closest(".pilha") || alvo.closest(".corpo")) return;
-      selecionarBloco(0, bi);
+      // sobe do elemento clicado até o bloco mais próximo (o clique pode ter
+      // caído num chip por dentro); cliques fora de um bloco não selecionam nada
+      const alvo = (ev.target as HTMLElement).closest<HTMLElement>("[data-bloco]");
+      if (!alvo || !el.contains(alvo)) return;
+      const pagEl = alvo.closest<HTMLElement>(".pagina");
+      const carEl = alvo.closest<HTMLElement>("[data-cartao]");
+      const campanha = estado.campanha;
+      const pagina = campanha?.paginas.find((p) => p.id === pagEl?.dataset.pagina);
+      const idCartao = carEl?.dataset.cartao;
+      const idBloco = alvo.dataset.bloco;
+      if (!pagina || !idCartao || !idBloco) return;
+      const ci = pagina.cartoes.findIndex((c) => c.id === idCartao);
+      const bi = pagina.cartoes[ci]?.blocos.findIndex((b) => b.id === idBloco) ?? -1;
+      if (ci < 0 || bi < 0) return;
+      selecionarBloco(ci, bi);
       notificarConteudo();
     };
     el.addEventListener("click", handler);
@@ -179,7 +187,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
           onClick={() => { if (estado.pagSelecionada !== i) { estado.pagSelecionada = i; notificarConteudo(); } }}
         >
           <div
-            className="escala"
+            className="escala arte"
             dangerouslySetInnerHTML={{ __html: renderPagina(p, { campanha, catalogos }) }}
           />
         </div>

@@ -72,6 +72,56 @@ export function artCss(): string {
 `;
 }
 
+/**
+ * O mesmo CSS da arte, com TODOS os seletores aninhados dentro de `escopo`
+ * (ex.: ".arte"). O editor injeta a arte (página inteira e miniaturas) dentro
+ * de containers da própria UI; sem o escopo, classes genéricas da arte vazam
+ * para fora — ".cabecalho" dava 150px de altura nos títulos das seções e
+ * ".faixa-verde" pintava de verde os campos do painel direito.
+ * @font-face fica intacto (não tem seletor e vale para a página inteira).
+ * Observação: só existem @font-face no topo; um @media futuro seria escopado
+ * recursivamente pela mesma rotina.
+ */
+export function artCssEscopo(escopo: string): string {
+  // comentários saem: eles ficam entre regras e atrapalham o pedaço por blocos
+  const css = artCss().replace(/\/\*[\s\S]*?\*\//g, "");
+  return escoparBlocos(css, escopo);
+}
+
+/** Percorre blocos `seletor{corpo}` e prefixa cada seletor com o escopo. */
+function escoparBlocos(css: string, escopo: string): string {
+  let saida = "";
+  let i = 0;
+  while (i < css.length) {
+    const abre = css.indexOf("{", i);
+    if (abre < 0) break;
+    // acha o } que fecha ESTE bloco (chaves aninhadas contam)
+    let nivel = 1;
+    let j = abre + 1;
+    while (j < css.length && nivel > 0) {
+      if (css[j] === "{") nivel++;
+      else if (css[j] === "}") nivel--;
+      j++;
+    }
+    const preludio = css.slice(i, abre).trim();
+    const corpo = css.slice(abre + 1, j - 1);
+    if (preludio.startsWith("@")) {
+      // regra sem seletor (@font-face) fica como está; uma com bloco interno
+      // (@media) repassa o corpo para a mesma rotina
+      const inner = corpo.includes("{") ? escoparBlocos(corpo, escopo) : corpo;
+      saida += `${preludio}{${inner}}`;
+    } else {
+      const seletores = preludio
+        .split(",")
+        .map((s) => `${escopo} ${s.trim()}`)
+        .join(",");
+      saida += `${seletores}{${corpo}}`;
+    }
+    i = j;
+  }
+  return saida;
+}
+
 // ---------------------------------------------------------------------------
 // Página
 // ---------------------------------------------------------------------------

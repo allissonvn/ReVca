@@ -174,3 +174,13 @@
 - `store.tsx`: adicionado estado `blocoSelecionado`, `zoom`, `zoomAjustado` + funções `selecionarBloco`, `limparSelecaoBloco`, `definirZoom`, `alternarAjusteTela`.
 - `tokens.css`: adicionados estilos para editor 3 colunas, left rail, right panel, zoom bar, canvas status, seções, faixa verde, blocos.
 - Verificação: `npm run typecheck` ✓ (0 erros); `npm test` ✓ (125/125); `npm run build` ✓.
+
+### Correção das inconsistências das colunas do editor (nov/2026)
+- Causa-raiz: `artCss()` era injetado de forma GLOBAL no editor (Canvas + Home) e classes genéricas da arte vazavam para a UI — `.cabecalho` dava 150px de altura nos títulos das seções e `.faixa-verde` pintava de verde os campos do painel direito. **Decisão:** nova função `artCssEscopo(escopo)` em `src/shared/render.ts` prefixa todos os seletores com o container; o editor injeta `artCssEscopo(".arte")` e o exportador/`/render/:id` continua com `artCss()` cru (`renderDocumento`). Testes novos em `tests/render.test.ts`.
+- Container da arte ganhou a classe `arte` em todos os pontos de render: `.escala` (Canvas), `.rail-mini-escala` (miniaturas do painel de páginas) e `.cam-mini-escala` (miniaturas da Home).
+- Medição de estouro (Canvas): elementos `position:absolute/fixed` (marca d'água e tags de seleção do editor) não contam como conteúdo e a comparação é sempre em px da arte — era isso que gerava o aviso falso de "1700px de 1308px" em página que cabe.
+- Painel direito unificado no design system: todos os campos com `Field`/`.field` (rótulo em caixa alta, input 100%); toolbar de cor do título virou **Preto | Vermelho** (mesmas opções do `tituloCor`; "Azul" e "Sem cor" apontavam para o mesmo valor e estouravam a coluna).
+- Seleção de bloco: `data-bloco` guarda o **id** do bloco (não o índice) — o clique no canvas resolve (ci, bi) pelo modelo e passa a alimentar `estado.blocoSelecionado` como fonte única (o painel direito deixou de ter estado próprio).
+- `LeftRail`: `useMemo` saiu de dentro do `.map` (violação de hooks que quebrava a lista ao filtrar) e a busca passou a procurar em faixa, títulos dos blocos e nomes de empreendimento (antes qualquer página com empreendimento vinculado casava com tudo).
+- Grade do editor: bloco `.editor-corpo` duplicado removido do `styles.css` (conflito de breakpoints com `tokens.css`) e o modo leitor agora usa a classe `editor-corpo leitor` (2 colunas — antes sobravam 360px vazios).
+- Pendência conhecida (fora desta rodada): Phase 5 do `referencia/PROMPT-UI.md` está incompleta — "Redefinir senha" na tela de Usuários é um stub e não há UI para trocar papel do usuário.

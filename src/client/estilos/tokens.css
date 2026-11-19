@@ -300,6 +300,9 @@ a:focus-visible,
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* botão de colapsar seção: sem isso o flex stretch centraliza o texto dele
+   dentro de uma faixa de largura total (parecia "saltado" para o meio) */
+.section > .btn { align-self: flex-start; }
 
 /* ---------- chip ---------- */
 
@@ -824,6 +827,15 @@ a:focus-visible,
   /* empilhado: cada faixa pega a altura do próprio conteúdo */
   .editor-corpo { grid-template-columns: 1fr; grid-template-rows: auto; }
 }
+/* leitor: sem coluna de edição à direita (o RightPanel nem é renderizado,
+   então a 3ª coluna teria sobrado 360px de espaço vazio) */
+.editor-corpo.leitor { grid-template-columns: 272px 1fr; }
+@media (max-width: 1280px) {
+  .editor-corpo.leitor { grid-template-columns: 240px 1fr; }
+}
+@media (max-width: 1100px) {
+  .editor-corpo.leitor { grid-template-columns: 1fr; }
+}
 
 /* ---------- left rail ---------- */
 .left-rail {
@@ -971,10 +983,12 @@ a:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 4px;
 }
-.bloco-cor-toolbar { display: flex; gap: 4px; }
+.bloco-cor-toolbar { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.bloco-cor-toolbar .btn { min-height: 26px; padding: 2px 9px; font-size: 12px; }
 .bloco-cor-toolbar .btn.ativo { background: var(--primary); color: #0b1020; }
 .bloco-largura { margin-top: 4px; }
 .bloco-titulo-row {

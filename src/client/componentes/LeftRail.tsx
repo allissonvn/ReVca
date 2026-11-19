@@ -43,13 +43,17 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
     if (!q) return c.paginas.map((_, i) => i);
     return c.paginas
       .map((p, i) => ({ p, i }))
-      .filter(
-        ({ p }) =>
-          p.faixa?.toLowerCase().includes(q) ||
-          p.cartoes.some((car) => car.empreendimentoId && p.cartoes.some((c2) => c2.empreendimentoId)),
-      )
+      .filter(({ p }) => {
+        // busca na faixa da página, nos títulos dos blocos e no empreendimento
+        if (p.faixa?.toLowerCase().includes(q)) return true;
+        if (p.cartoes.some((car) => car.titulo.some((t) => t.toLowerCase().includes(q)))) return true;
+        return p.cartoes.some((car) =>
+          (e.catalogos?.empreendimentos.find((x) => x.id === car.empreendimentoId)?.nome ?? [])
+            .some((n) => n.toLowerCase().includes(q)),
+        );
+      })
       .map(({ i }) => i);
-  }, [c.paginas, busca]);
+  }, [c.paginas, busca, e.catalogos]);
 
   function adicionarPagina(): void {
     const modeloId = (document.getElementById("novo-modelo-rail") as HTMLSelectElement)?.value ?? "residencial";
@@ -91,10 +95,6 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
           const empId = p.cartoes[0]?.empreendimentoId;
           const emp = empId ? e.catalogos?.empreendimentos.find((x) => x.id === empId) : undefined;
           const nomeEmp = (emp?.nome[0]) ?? p.faixa ?? `Página ${i + 1}`;
-          const html = useMemo(
-            () => (e.campanha && e.catalogos ? renderCampanha({ ...e.campanha, paginas: [p] }, e.catalogos) : ""),
-            [JSON.stringify(p), e.catalogos],
-          );
           const estouro = estouros.get(p.id);
           return (
             <ItemPagina
@@ -102,7 +102,6 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
               pag={p}
               i={i}
               total={c.paginas.length}
-              html={html}
               empNome={nomeEmp}
               modeloNome={modelo?.nome ?? p.modelo}
               estouro={estouro}
@@ -182,7 +181,6 @@ type ItemProps = {
   pag: Pagina;
   i: number;
   total: number;
-  html: string;
   empNome: string;
   modeloNome: string;
   estouro?: number;
@@ -203,7 +201,6 @@ type ItemProps = {
 function ItemPagina({
   pag,
   i,
-  html,
   empNome,
   modeloNome,
   estouro,
@@ -224,6 +221,14 @@ function ItemPagina({
   const e = useEstado();
   const selecionado = i === e.pagSelecionada;
 
+  // HTML da miniatura memoizado pelo conteúdo da página. O cálculo fica AQUI
+  // (e não no map do painel): hooks dentro de .map quebram quando o filtro de
+  // busca muda o número de itens renderizados.
+  const html = useMemo(
+    () => (e.campanha && e.catalogos ? renderCampanha({ ...e.campanha, paginas: [pag] }, e.catalogos) : ""),
+    [JSON.stringify(pag), e.campanha, e.catalogos],
+  );
+
   const cls = [
     "rail-item",
     selecionado ? "selecionado" : "",
@@ -243,7 +248,7 @@ function ItemPagina({
       onClick={() => { estado.pagSelecionada = i; notificarConteudo(); }}
     >
       <div className="rail-mini">
-        <span className="rail-mini-escala"
+        <span className="rail-mini-escala arte"
           style={{ transform: `scale(${ESCALA_THUMB})`, width: LARGURA_THUMB, height: ALTURA_THUMB }}
           dangerouslySetInnerHTML={{ __html: html }}
         />
