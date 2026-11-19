@@ -139,10 +139,9 @@ a:focus-visible,
 .btn.primary {
   background: var(--primary);
   border-color: var(--primary);
-  color: #0b1020;
+  color: #fff;
 }
 .btn.primary:hover:not(:disabled) { background: #6b8fff; }
-.btn.primary[data-theme="claro"] { color: #0b1020; }
 
 .btn.danger {
   background: transparent;
@@ -687,7 +686,8 @@ a:focus-visible,
 .usu-email {
   font-size: 12px;
   color: var(--muted);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .usu-status {
   display: flex;
@@ -942,6 +942,8 @@ a:focus-visible,
   box-shadow: var(--shadow);
   background: #fff;
   cursor: default;
+  display: flex;
+  justify-content: center;
 }
 .zoom-bar {
   display: flex;

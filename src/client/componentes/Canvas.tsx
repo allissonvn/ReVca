@@ -46,11 +46,11 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     if (!el) return;
     const escala = Math.max(0.25, Math.min(2, e.zoom));
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
-      m.style.transformOrigin = "top left";
+      m.style.transformOrigin = "center top";
       m.style.willChange = "transform";
       m.style.transform = `scale(${escala})`;
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
+      m.style.width = `${LARGURA_PAGINA}px`;
+      m.style.height = `${ALTURA_PAGINA}px`;
     });
   }
 

@@ -60,8 +60,8 @@ export function artCss(): string {
 .linha-blocos{display:flex;justify-content:space-between;width:100%}
 .linha-blocos.centro{justify-content:center}
 .bloco-col{display:flex;flex-direction:column;align-items:center;gap:${L.GAP_CHIP}px;min-width:0}
-.chip{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;padding:${L.CHIP.paddingY}px ${L.CHIP.paddingX}px;font-weight:700;font-size:calc(${L.CHIP.fonte}px * var(--esc));line-height:${L.CHIP.linha};text-align:center}
-.chip-titulo{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;font-weight:700;text-align:center;font-size:calc(${L.CHIP_TITULO.fonte}px * var(--esc));padding:${L.CHIP_TITULO.paddingY}px ${L.CHIP_TITULO.paddingX}px}
+.chip{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;padding:${L.CHIP.paddingY}px ${L.CHIP.paddingX}px;font-weight:700;font-size:calc(${L.CHIP.fonte}px * var(--esc));line-height:${L.CHIP.linha};text-align:center;color:#111}
+.chip-titulo{display:table;background:${L.CORES.chip};border-radius:${L.CHIP.raio}px;font-weight:700;text-align:center;font-size:calc(${L.CHIP_TITULO.fonte}px * var(--esc));padding:${L.CHIP_TITULO.paddingY}px ${L.CHIP_TITULO.paddingX}px;color:#111}
 /* o que o usuário digita é o que aparece: espaços internos preservados e
    palavras longas quebram em vez de estourar o chip (AGENTS.md §5) */
 .chip,.chip-titulo{white-space:pre-wrap;overflow-wrap:anywhere}

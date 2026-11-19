@@ -97,7 +97,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
           title="Salvar e voltar às campanhas"
         >
           <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
-          Campanhas
+          Voltar
         </button>
         <Mark tamanho={32} aria-label="REVCA — Editor" />
         <div className="topbar-campanha">

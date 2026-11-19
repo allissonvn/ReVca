@@ -125,7 +125,7 @@ export function Usuarios(): JSX.Element {
           title="Voltar às campanhas"
         >
           <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
-          ← Campanhas
+          Voltar
         </button>
         <Mark tamanho={32} aria-label="REVCA — Usuários" />
         <h1>Usuários</h1>
@@ -167,7 +167,7 @@ export function Usuarios(): JSX.Element {
                         </Badge>
                         <div className="usu-status">
                           <span className={`usu-pontinho ${u.ativo ? "ativo" : "inativo"}`} aria-hidden="true"></span>
-                          {u.ativo ? "● Ativo" : "● Inativo"}
+                          {u.ativo ? "Ativo" : "Inativo"}
                         </div>
                       </div>
                       <div className="usu-acoes">
