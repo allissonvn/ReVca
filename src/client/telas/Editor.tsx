@@ -87,7 +87,6 @@ export function Editor({ id }: { id: string }): JSX.Element {
     conflito: "✗ Conflito: mudou em outro lugar",
   };
 
-  // Verifica se a página selecionada cabe (sem estouro)
   const pagSelecionada = c.paginas[estado.pagSelecionada];
   const cabeNaPagina = pagSelecionada ? !estouros.has(pagSelecionada.id) : true;
 
@@ -189,7 +188,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
         {!leitor && <RightPanel onDuplicar={() => void duplicar()} />}
       </div>
 
-      {/* Status da página (baseado no mapa de estouros medido pelo Canvas) */}
+      {/* Status da página */}
       <div className="canvas-status">
         {cabeNaPagina ? (
           <span className="status-ok">✓ Cabe na página</span>
@@ -198,7 +197,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
         )}
       </div>
 
-      {/* Barra de zoom fixa no viewport (fora do canvas scrollável) */}
+      {/* Barra de zoom fixa no viewport */}
       <ZoomBar
         zoom={estado.zoom}
         aoMudarZoom={(z) => { definirZoom(z); }}

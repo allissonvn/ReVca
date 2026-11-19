@@ -1,8 +1,8 @@
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
 // Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
 // visualmente quanto reportando o mapa de estouros ao editor (badges ⚠).
-// Phase 3: destaca o bloco selecionado com outline.
-import { useLayoutEffect, useRef } from "react";
+// Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
+import { useLayoutEffect, useRef, useEffect } from "react";
 import type { JSX } from "react";
 import { artCssEscopo, renderPagina } from "../../shared/render.js";
 import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco } from "../store.js";
@@ -24,21 +24,17 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const cssInjetado = useRef(false);
   const ultimoMapa = useRef("");
 
-  // Aplica zoom redimensionando a moldura (layout real, não transform visual)
+  // aplica escala sempre que o zoom mudar
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
     const escala = Math.max(0.25, Math.min(2, e.zoom));
-    el.querySelectorAll<HTMLElement>(".moldura").forEach((m) => {
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
-      m.style.transform = "none";
-    });
-    // a página interna (.escala.arte) acompanha o tamanho da moldura
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
-      m.style.transform = "none";
+      m.style.transformOrigin = "center top";
+      m.style.willChange = "transform";
+      m.style.transform = `scale(${escala})`;
+      m.style.width = `${LARGURA_PAGINA}px`;
+      m.style.height = `${ALTURA_PAGINA}px`;
     });
   }, [e.zoom]);
 
@@ -52,7 +48,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       cssInjetado.current = true;
     }
     const id = requestAnimationFrame(medirEstouros);
-    const onResize = () => { /* escala já é aplicada pelo effect de zoom */ };
+    const onResize = () => { /* escala já atualizada pelo effect de zoom */ };
     window.addEventListener("resize", onResize);
     return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
   }, []);
