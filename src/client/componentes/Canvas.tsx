@@ -24,17 +24,21 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const cssInjetado = useRef(false);
   const ultimoMapa = useRef("");
 
-  // Aplica escala quando o zoom muda
+  // Aplica zoom redimensionando a moldura (layout real, não transform visual)
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
     const escala = Math.max(0.25, Math.min(2, e.zoom));
+    el.querySelectorAll<HTMLElement>(".moldura").forEach((m) => {
+      m.style.width = `${LARGURA_PAGINA * escala}px`;
+      m.style.height = `${ALTURA_PAGINA * escala}px`;
+      m.style.transform = "none";
+    });
+    // a página interna (.escala.arte) acompanha o tamanho da moldura
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
-      m.style.transformOrigin = "center top";
-      m.style.willChange = "transform";
-      m.style.transform = `scale(${escala})`;
-      m.style.width = `${LARGURA_PAGINA}px`;
-      m.style.height = `${ALTURA_PAGINA}px`;
+      m.style.width = `${LARGURA_PAGINA * escala}px`;
+      m.style.height = `${ALTURA_PAGINA * escala}px`;
+      m.style.transform = "none";
     });
   }, [e.zoom]);
 

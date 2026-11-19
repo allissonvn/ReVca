@@ -813,28 +813,31 @@ a:focus-visible,
 /* ---------- corpo do editor (3 colunas) ---------- */
 .editor-corpo {
   display: grid;
-  grid-template-columns: 272px 1fr 360px;
-  /* uma única linha ocupando a altura disponível: o canvas rola por dentro */
+  /* canvas coluna usa max-content para acompanhar o zoom da moldura */
+  grid-template-columns: 272px minmax(0, max-content) 360px;
   grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   gap: 0;
 }
 @media (max-width: 1280px) {
-  .editor-corpo { grid-template-columns: 240px 1fr 300px; }
+  .editor-corpo { grid-template-columns: 240px minmax(0, max-content) 300px; }
 }
 @media (max-width: 1100px) {
-  /* empilhado: cada faixa pega a altura do próprio conteúdo */
   .editor-corpo { grid-template-columns: 1fr; grid-template-rows: auto; }
 }
-/* leitor: sem coluna de edição à direita (o RightPanel nem é renderizado,
-   então a 3ª coluna teria sobrado 360px de espaço vazio) */
-.editor-corpo.leitor { grid-template-columns: 272px 1fr; }
+/* leitor: sem coluna de edição à direita */
+.editor-corpo.leitor { grid-template-columns: 272px minmax(0, max-content); }
 @media (max-width: 1280px) {
-  .editor-corpo.leitor { grid-template-columns: 240px 1fr; }
+  .editor-corpo.leitor { grid-template-columns: 240px minmax(0, max-content); }
 }
 @media (max-width: 1100px) {
   .editor-corpo.leitor { grid-template-columns: 1fr; }
+}
+
+/* editor container permite scroll horizontal quando canvas cresce com zoom */
+.editor {
+  overflow-x: auto;
 }
 
 /* ---------- left rail ---------- */
@@ -929,21 +932,25 @@ a:focus-visible,
 
 /* ---------- canvas ---------- */
 .canvas {
-  overflow: auto;
+  /* sem overflow auto: o próprio canvas cresce/encolhe com o zoom */
   padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   background: var(--canvas);
+  min-height: 100%;
 }
 .canvas .moldura {
   border-radius: 4px;
   box-shadow: var(--shadow);
   background: #fff;
   cursor: default;
-  display: flex;
-  justify-content: center;
+  /* tamanho base; escala aplicada via transform no Canvas component */
+  width: 924px;
+  height: 1308px;
+  transform-origin: center top;
+  will-change: transform;
 }
 /* zoom-bar fixa no centro inferior do viewport */
 .zoom-bar {
