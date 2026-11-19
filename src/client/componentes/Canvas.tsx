@@ -1,12 +1,11 @@
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
 // Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
 // visualmente quanto reportando o mapa de estouros ao editor (badges ⚠).
-// Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
+// Phase 3: destaca o bloco selecionado com outline.
 import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import { artCssEscopo, renderPagina } from "../../shared/render.js";
-import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco, definirZoom, alternarAjusteTela } from "../store.js";
-import { ZoomBar } from "./ZoomBar.js";
+import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco } from "../store.js";
 
 const LARGURA_PAGINA = 924;
 const ALTURA_PAGINA = 1308;
@@ -25,23 +24,8 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const cssInjetado = useRef(false);
   const ultimoMapa = useRef("");
 
+  // Aplica escala quando o zoom muda
   useLayoutEffect(() => {
-    if (!cssInjetado.current) {
-      // escopado em ".arte": classes genéricas da arte (.cabecalho, .faixa-verde)
-      // não podem vazar para a UI dos painéis
-      const style = document.createElement("style");
-      style.textContent = artCssEscopo(".arte");
-      document.head.appendChild(style);
-      cssInjetado.current = true;
-    }
-    aplicarEscala();
-    const id = requestAnimationFrame(medirEstouros);
-    const onResize = () => aplicarEscala();
-    window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
-  });
-
-  function aplicarEscala(): void {
     const el = container.current;
     if (!el) return;
     const escala = Math.max(0.25, Math.min(2, e.zoom));
@@ -52,7 +36,22 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       m.style.width = `${LARGURA_PAGINA}px`;
       m.style.height = `${ALTURA_PAGINA}px`;
     });
-  }
+  }, [e.zoom]);
+
+  useLayoutEffect(() => {
+    if (!cssInjetado.current) {
+      // escopado em ".arte": classes genéricas da arte (.cabecalho, .faixa-verde)
+      // não podem vazar para a UI dos painéis
+      const style = document.createElement("style");
+      style.textContent = artCssEscopo(".arte");
+      document.head.appendChild(style);
+      cssInjetado.current = true;
+    }
+    const id = requestAnimationFrame(medirEstouros);
+    const onResize = () => { /* escala já é aplicada pelo effect de zoom */ };
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
+  }, []);
 
   /** Altura real do conteúdo, em px da arte. Elementos absolutos são a marca
    *  d'água (que sai da página de propósito) e as tags de seleção do editor —
@@ -192,20 +191,6 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
           />
         </div>
       ))}
-      {/* Barra de zoom */}
-      <ZoomBar
-        zoom={estado.zoom}
-        aoMudarZoom={(z) => { definirZoom(z); aplicarEscala(); }}
-        ajustado={estado.zoomAjustado}
-        aoAlternarAjuste={(ajustado) => { alternarAjusteTela(ajustado); if (!ajustado) aplicarEscala(); }}
-      />
-      <div className="canvas-status">
-        {cabeNaPagina ? (
-          <span className="status-ok">✓ Cabe na página</span>
-        ) : (
-          <span className="status-estouro">⚠ Conteúdo passa do limite</span>
-        )}
-      </div>
     </main>
   );
 }
