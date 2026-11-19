@@ -936,6 +936,7 @@ a:focus-visible,
   background: var(--canvas);
   min-height: 100%;
   overflow-x: auto;
+  overflow-y: auto; /* canvas faz scroll vertical quando conteúdo excede viewport */
 }
 .canvas .moldura {
   border-radius: 4px;
@@ -949,6 +950,10 @@ a:focus-visible,
   transform-origin: center top;
   will-change: transform;
 }
+/* No editor, a página deve mostrar todo o conteúdo (overflow visible).
+   O scroll é feito pelo .canvas. O exportador usa o CSS original com overflow:hidden. */
+.arte .pagina { overflow: visible !important; }
+.escala.arte { overflow: visible !important; }
 /* zoom-bar fixa no centro inferior do viewport */
 .zoom-bar {
   position: fixed;
