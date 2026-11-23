@@ -1,7 +1,7 @@
 // Dev utility: decodifica/encode PNG sem dependências e combina imagens
 // extraídas do PDF (RGB + máscara de tons de cinza) em RGBA.
 // Uso direto: node scripts/extract-assets.mjs <dir-img> <dir-saida>
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync, deflateSync } from "node:zlib";
@@ -122,6 +122,17 @@ function main() {
   const [inDir, outDirArg] = process.argv.slice(2);
   if (!inDir || !outDirArg) {
     console.error("uso: node scripts/extract-assets.mjs <dir-img> <dir-saida>");
+    process.exit(1);
+  }
+  // A pasta referencia/ não é mais versionada (ver docs/LIMPEZA-REPO.md).
+  // Este script é de uso manual do dono e nada no build/teste depende dele.
+  if (!existsSync(resolve(inDir))) {
+    console.error(
+      `erro: o diretório de imagens não existe: ${resolve(inDir)}\n` +
+        "A pasta referencia/ foi removida do repositório (material interno da marca).\n" +
+        "Restaure-a a partir de um backup local ou ajuste o caminho passado como argumento.\n" +
+        "Veja docs/LIMPEZA-REPO.md para detalhes da limpeza do repositório.",
+    );
     process.exit(1);
   }
   const outDir = resolve(outDirArg);

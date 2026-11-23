@@ -7,3 +7,9 @@ temp/
 tmp/
 *.log
 data/vca.db*
+
+# Material interno da marca e do projeto: fora do versionamento (docs/LIMPEZA-REPO.md)
+referencia/
+Thumbs.db
+*.Zone.Identifier
+.DS_Store

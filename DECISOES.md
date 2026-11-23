@@ -211,3 +211,16 @@ O `scripts/screenshots.mjs` original não capturava a tela do editor e trocava o
 
 ### Verificação do `DECISOES.md` (antecipa a Phase 4.3)
 - UTF-8 sem BOM (primeiro byte `0x23` = `#`), **0** sequências literais `\uXXXX`, **0** caracteres de controle. Nada a corrigir.
+
+## Phase 1 — Higiene do repositório (privacidade, concluída)
+
+- `.gitignore` ganhou `referencia/`, `Thumbs.db`, `*.Zone.Identifier`, `.DS_Store`.
+- `git rm -r --cached referencia` + remoção dos 46 `Thumbs.db` versionados. **Nada apagado do disco** (a pasta já estava vazia por decisão do dono, registrada acima).
+- `git ls-files | Select-String "(?i)thumbs\.db|^referencia/"` → **vazio**. Versionados: 100 arquivos (antes 281).
+- **Nada de código/teste/build lê `referencia/`.** Único ponto que sabia gerar assets de lá é `scripts/extract-assets.mjs`, que recebe os diretórios por argumento — agora aborta com mensagem em português explicando que `referencia/` saiu do repositório (verificado: exit 1 com a mensagem).
+- **Desvio do prompt (deliberado):** o `referencia/PROMPT-FIXES.md` foi **movido para `docs/PROMPT-FIXES.md`**. Motivo: a condição de pronto da Phase 1 exige que `git ls-files` não mostre **nada** em `referencia/`; versionar o prompt lá violaria isso. Continua versionado (não é material interno), e `referencia/` fica 100% fora do Git.
+- `docs/LIMPEZA-REPO.md` criado (pt-BR): roteiro **não executado** de purga do histórico com `git filter-repo`, o que fazer depois (force-push, avisar colaboradores, deletar fork/caches, assinaturas GPG deixam de valer) e a alternativa "deixar o repositório privado" — com recomendação de fazer a Opção B primeiro, por ser instantânea e sem risco.
+- **`data/logos/` segue versionado** (o app precisa). Ativos de marca lá dentro (para o dono decidir a visibilidade do repo):
+  - **Marca VCA:** `logo-vca.png`, `watermark.png`.
+  - **Empreendimentos:** `amado-residencial`, `baron-1`, `baron-connect`, `baron-uchoa`, `bela-morada`, `bellator-olivia`, `bellator-residence`, `bem-viver`, `connect-tech-1`, `connect-tech-2`, `dona-lys`, `dona-mirai`, `dona-olivia`, `du-bem`, `duque-dulest`, `duque-lavenir`, `kahakai`, `sculptor-residence`, `uni-ville`, `verso-residence`, `vila-do-servidor` (21 PNGs).
+- Verificação: `npm run build` ✓ · `npm test` ✓ **127/127** (inalterado em relação ao baseline).
