@@ -1,12 +1,14 @@
+// A campanha de referência (19 páginas / 25 cartões, como o PDF original) agora
+// é construída em `tests/helpers/fixtures.ts`, não lida de `data/campanhas/`
+// (que é gitignored e só existe depois do seed). Ver PROMPT-FIXES.md, Phase 2.
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CampanhaSchema } from "../src/shared/schema.js";
+import { campanhaReferencia } from "./helpers/fixtures.js";
 
 describe("campanha gerada do PDF de referência", () => {
-  const campanha = CampanhaSchema.parse(
-    JSON.parse(readFileSync(join("data", "campanhas", "exemplo.json"), "utf8"))
-  );
+  const campanha = CampanhaSchema.parse(campanhaReferencia());
 
   it("é válida contra o schema", () => {
     expect(campanha).toBeDefined();

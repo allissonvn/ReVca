@@ -224,3 +224,21 @@ O `scripts/screenshots.mjs` original não capturava a tela do editor e trocava o
   - **Marca VCA:** `logo-vca.png`, `watermark.png`.
   - **Empreendimentos:** `amado-residencial`, `baron-1`, `baron-connect`, `baron-uchoa`, `bela-morada`, `bellator-olivia`, `bellator-residence`, `bem-viver`, `connect-tech-1`, `connect-tech-2`, `dona-lys`, `dona-mirai`, `dona-olivia`, `du-bem`, `duque-dulest`, `duque-lavenir`, `kahakai`, `sculptor-residence`, `uni-ville`, `verso-residence`, `vila-do-servidor` (21 PNGs).
 - Verificação: `npm run build` ✓ · `npm test` ✓ **127/127** (inalterado em relação ao baseline).
+
+## Phase 2 — Testes reproduzíveis em clone limpo (concluída)
+
+- **Fixtures em código:** criado `tests/helpers/fixtures.ts` com `campanhaSeed()` (a
+  campanha de 4 páginas do seed) e `campanhaReferencia()` (19 páginas / 25 cartões, mesma
+  distribuição de modelos do PDF: residencial 14 · aviso 1 · duplo 1 · loteamentos 3+3+2).
+  Conteúdo deliberadamente genérico — **nada de texto comercial real** no repositório.
+- `tests/schema.test.ts` e `tests/campanha-referencia.test.ts` deixam de ler
+  `data/campanhas/exemplo.json` (gitignored). `tests/export.test.ts` escreve a fixture num
+  diretório temporário junto dos catálogos.
+- **Verificação forte:** `data/campanhas/` foi **movida para fora do projeto** e `npm test`
+  rodou **127/127 verdes** — prova de que nenhum teste depende dela. Depois restaurada.
+- **Chromium ausente:** `tests/export.test.ts` checa `puppeteer.executablePath()` +
+  `existsSync`; sem navegador, os 6 testes de exportação usam `it.skipIf(...)` e são
+  **pulados** (os outros 121 rodam). Documentado no README.
+- **README** ganhou a seção "Como rodar os testes" (sem servidor/seed, fixtures em código,
+  Chromium opcional, 127 esperados).
+- Verificação: `npm run typecheck` ✓ · `npm test` ✓ **127/127** · `npm run build` ✓.

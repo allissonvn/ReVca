@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   CampanhaSchema, ModeloSchema, TipoBlocoSchema, TituloProntoSchema, EmpreendimentoSchema,
 } from "../src/shared/schema.js";
+import { campanhaSeed } from "./helpers/fixtures.js";
 
 const campanhaValida = () => ({
   versao: 1,
@@ -37,9 +38,9 @@ describe("CampanhaSchema", () => {
     expect(() => CampanhaSchema.parse(campanhaValida())).not.toThrow();
   });
 
+  // data/campanhas/ é gitignored: a campanha vem da fixture em código, não do disco.
   it("aceita a campanha do seed", () => {
-    const seed = JSON.parse(readFileSync(join("data", "campanhas", "exemplo.json"), "utf8"));
-    expect(() => CampanhaSchema.parse(seed)).not.toThrow();
+    expect(() => CampanhaSchema.parse(campanhaSeed())).not.toThrow();
   });
 
   it("rejeita versão diferente", () => {

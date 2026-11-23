@@ -49,3 +49,21 @@ npm run seed       # cria uma campanha de exemplo em data/campanhas/
 - Stack: Node 20+, TypeScript strict, Express, Zod, React 19 (esbuild), SQLite (usuários/sessões), bcryptjs (senhas), Puppeteer (exportação), Vitest. Sem framework de componentes no cliente.
 - A arte (layout das páginas) vive **só** em `src/shared/render.ts` — usada pela prévia do editor e pelo exportador.
 - `HOST` e `PORT` podem ser trocados por variáveis de ambiente (padrão `127.0.0.1:8080`).
+
+### Como rodar os testes
+
+```bash
+npm test           # suíte completa (Vitest)
+npm test -- render # só um arquivo (nome parcial do arquivo)
+```
+
+- **Não precisa de servidor, banco nem de `npm run seed`.** Cada teste sobe o seu próprio
+  servidor em porta efêmera, com os dados numa pasta temporária do sistema.
+- **Não depende de `data/campanhas/`** (que é gitignored e só existe depois do seed): as
+  campanhas usadas nos testes são construídas em código, em `tests/helpers/fixtures.ts`.
+  Os catálogos em `data/catalogos/` são versionados e podem ser lidos normalmente.
+- **Os testes de exportação usam o Chromium do Puppeteer** (é eles que contam as páginas do
+  PDF). Se o Chromium não estiver instalado, **esses testes são pulados** e os demais rodam
+  normalmente. Para instalar: `npx puppeteer browsers install chrome`.
+- `npm run typecheck` (`tsc --noEmit`) e `npm run build` são separados do `npm test`.
+- Esperado hoje: **127 testes em 8 arquivos, todos passando**.

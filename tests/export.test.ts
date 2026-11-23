@@ -1,21 +1,37 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
-import { mkdtempSync, mkdirSync, copyFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { criarApp } from "../src/server/index.js";
 import { criarStorage } from "../src/server/storage.js";
 import type { Server } from "node:http";
+import { campanhaSeed } from "./helpers/fixtures.js";
 
 const require = createRequire(import.meta.url);
+
+// Sem Chromium no PATH/PUPPETEER o `puppeteer.launch` rejeita e derrubaria a
+// suíte inteira. Aqui checamos de forma barata; se faltar, os testes que usam
+// navegador são pulados (PROMPT-FIXES.md, Phase 2).
+let chromiumDisponivel = true;
+try {
+  const puppeteer = require("puppeteer");
+  const caminho = puppeteer.executablePath();
+  chromiumDisponivel = typeof caminho === "string" && caminho !== "" && existsSync(caminho);
+} catch {
+  chromiumDisponivel = false;
+}
 
 // Servidor real em porta efêmera (exportação usa Puppeteer de verdade:
 // o teste obrigatório do AGENTS.md §10 é a contagem de páginas do PDF)
 const raizDados = mkdtempSync(join(tmpdir(), "vca-export-"));
 mkdirSync(join(raizDados, "catalogos"), { recursive: true });
+mkdirSync(join(raizDados, "campanhas"), { recursive: true });
 for (const arq of ["modelos.json", "tipos-bloco.json", "titulos.json", "empreendimentos.json"]) {
   copyFileSync(join("data", "catalogos", arq), join(raizDados, "catalogos", arq));
 }
+// data/campanhas/ é gitignored: a campanha de exemplo vem da fixture em código.
+writeFileSync(join(raizDados, "campanhas", "exemplo.json"), JSON.stringify(campanhaSeed(), null, 2));
 const app = criarApp({ raizDados });
 const server: Server = await new Promise((pronto) => {
   const s = app.listen(0, "127.0.0.1", () => pronto(s));
@@ -98,7 +114,7 @@ function contarPaginasPdf(pdf: Buffer): number {
 }
 
 describe("exportação", () => {
-  it("PDF tem uma página por página da campanha (4)", { timeout: 60000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PDF tem uma página por página da campanha (4)", { timeout: 60000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("pdf");
@@ -109,7 +125,7 @@ describe("exportação", () => {
     expect(r.headers.get("content-disposition")).toContain("parcelamento-matriz-teste-novembro.pdf");
   });
 
-  it("PNG de uma página", { timeout: 60000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PNG de uma página", { timeout: 60000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&pagina=2`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("png");
@@ -121,12 +137,12 @@ describe("exportação", () => {
     expect(largura).toBe(1848);
   });
 
-  it("PNG de página inexistente responde 404", { timeout: 60000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PNG de página inexistente responde 404", { timeout: 60000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&pagina=9`, { method: "POST" });
     expect(r.status).toBe(404);
   });
 
-  it("PDF comprimido: 4 páginas rasterizadas, PDF válido", { timeout: 90000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PDF comprimido: 4 páginas rasterizadas, PDF válido", { timeout: 90000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf&qualidade=comprimida`, { method: "POST" });
     expect(r.status).toBe(200);
     const pdf = Buffer.from(await r.arrayBuffer());
@@ -134,7 +150,7 @@ describe("exportação", () => {
     expect(contarPaginasPdf(pdf)).toBe(4);
   });
 
-  it("PNG comprimido: mesma página em resolução 1× (menor)", { timeout: 90000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PNG comprimido: mesma página em resolução 1× (menor)", { timeout: 90000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=png&qualidade=comprimida&pagina=1`, { method: "POST" });
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toContain("png");
@@ -144,7 +160,7 @@ describe("exportação", () => {
     expect(png.readUInt32BE(16)).toBe(924);
   });
 
-  it("PDF de uma página só (vetorial)", { timeout: 90000 }, async () => {
+  it.skipIf(!chromiumDisponivel)("PDF de uma página só (vetorial)", { timeout: 90000 }, async () => {
     const r = await fetchAuth(`/api/campanhas/exporta/exportar?formato=pdf&pagina=3`, { method: "POST" });
     expect(r.status).toBe(200);
     const pdf = Buffer.from(await r.arrayBuffer());
