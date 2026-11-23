@@ -129,7 +129,7 @@ function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, somenteLei
           <span className="pag-num">{i + 1}</span>
           <b>{pag.faixa || pag.cartoes[0]?.faixa || "Sem faixa"}</b>
           <small>{modelo?.nome ?? pag.modelo} · {pag.cartoes.length} cartão(ões)</small>
-          {estouro !== undefined && <span className="aviso" title={`Conteúdo maior que a página (${estouro}px)`}>⚠ {estouro}px</span>}
+          {estouro !== undefined && <span className="aviso" title={`Conteúdo maior que a página (${estouro}px)`}>! {estouro}px</span>}
         </span>
       </button>
       {!somenteLeitura && (
@@ -141,7 +141,7 @@ function ItemPagina({ pag, i, total, estouro, arrastando, soltarAqui, somenteLei
             ps.splice(i + 1, 0, JSON.parse(JSON.stringify(pag)) as Pagina);
             estado.pagSelecionada = i + 1;
             marcarSujo();
-          }}>⧉</button>
+          }}>duplicar</button>
           <button className="icone perigo" aria-label="Excluir página" onClick={() => {
             const ps = estado.campanha!.paginas;
             ps.splice(i, 1);

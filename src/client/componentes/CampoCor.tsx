@@ -136,7 +136,7 @@ export function CampoCor({ marcado, aoMudar, aria, multilinea, placeholder }: Pr
               onChange={(ev) => pintar(ev.target.value)}
             />
           </label>
-          <button type="button" className="btn mini fantasma" onClick={() => setPaleta(null)}>✕</button>
+          <button type="button" className="btn mini fantasma" onClick={() => setPaleta(null)}>×</button>
         </div>
       )}
     </div>

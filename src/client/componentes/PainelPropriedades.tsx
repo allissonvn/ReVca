@@ -227,7 +227,7 @@ function EditorBloco({ b, ci, bi, arrastando, soltarAqui, aoArrastarAlca, aoPass
             const car = estado.campanha!.paginas[estado.pagSelecionada]!.cartoes[ci]!;
             car.blocos.splice(bi, 1);
             marcarSujo();
-          }}>✕</button>
+          }}>×</button>
         </div>
       </div>
 
