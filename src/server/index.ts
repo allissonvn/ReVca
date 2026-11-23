@@ -179,7 +179,7 @@ export function criarApp(opcoes: OpcoesServidor = {}): Express {
       const { ativo, papel, senha } = AlterarUsuarioSchema.parse(req.body);
       let usuario;
       if (senha !== undefined) {
-        usuario = auth.redefinirSenha(id);
+        usuario = auth.redefinirSenha(id, senha);
       } else if (papel !== undefined) {
         usuario = auth.alterarPapel(id, papel);
       } else if (ativo !== undefined) {

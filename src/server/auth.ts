@@ -42,7 +42,7 @@ export type Autenticacao = {
   /** Altera o papel de um usuário (só admin). Retorna o resumo atualizado ou null se não existir. */
   alterarPapel: (id: string, papel: Papel) => UsuarioResumo | null;
   /** Redefine a senha de um usuário (só admin). Retorna o resumo atualizado ou null se não existir. */
-  redefinirSenha: (id: string) => UsuarioResumo | null;
+  redefinirSenha: (id: string, novaSenha: string) => UsuarioResumo | null;
 };
 
 export function criarAutenticacao(raizDados?: string): Autenticacao {
@@ -208,10 +208,9 @@ export function criarAutenticacao(raizDados?: string): Autenticacao {
     return linha ? usuarioParaResumo(linhaParaUsuario(linha)) : null;
   };
 
-  const redefinirSenha = (id: string): UsuarioResumo | null => {
-    // Só o admin pode redefinir senha; gera uma senha temporária "admin123"
-    const tempSenha = "admin123";
-    const senhaHash = hashSenha(tempSenha);
+  const redefinirSenha = (id: string, novaSenha: string): UsuarioResumo | null => {
+    // Só o admin pode redefinir senha; gera o hash da senha informada
+    const senhaHash = hashSenha(novaSenha);
     const r = db.prepare("UPDATE usuarios SET senha_hash = ? WHERE id = ?").run(senhaHash, id);
     if (r.changes === 0) return null;
     const linha = db
