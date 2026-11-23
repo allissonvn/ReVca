@@ -184,3 +184,30 @@
 - `LeftRail`: `useMemo` saiu de dentro do `.map` (violação de hooks que quebrava a lista ao filtrar) e a busca passou a procurar em faixa, títulos dos blocos e nomes de empreendimento (antes qualquer página com empreendimento vinculado casava com tudo).
 - Grade do editor: bloco `.editor-corpo` duplicado removido do `styles.css` (conflito de breakpoints com `tokens.css`) e o modo leitor agora usa a classe `editor-corpo leitor` (2 colunas — antes sobravam 360px vazios).
 - Pendência conhecida (fora desta rodada): Phase 5 do `referencia/PROMPT-UI.md` está incompleta — "Redefinir senha" na tela de Usuários é um stub e não há UI para trocar papel do usuário.
+
+## Baseline pré-correções (referencia/PROMPT-FIXES.md — Phase 0)
+
+Data: 23/11/2026 · branch `fix/review` criada a partir de `master` (`10b6b9d`).
+
+- `npm run typecheck` → **exit 0**, nenhum erro.
+- `npm run build` → **exit 0** (`servidor`, `seed`, `cliente`, `html`, `estilos`, `fontes` ok).
+- `npm test` → **exit 0, 127/127 testes em 8 arquivos, ZERO falha**.
+  - smoke 1 · markup 31 · migrate 11 · campanha-referencia 6 · schema 15 · render 21 · server 36 · export 6.
+- **Falhas do baseline: nenhuma.** Toda fase que terminar com mais falhas que isto está quebrada.
+- Screenshots "before" gerados por `scripts/screenshots.mjs` em `tmp/screens/before/` (gitignored):
+  `home-claro/escuro`, `usuarios-claro/escuro`, `editor-claro/escuro`, `login-claro/escuro` (8 PNGs, 1440×900).
+
+### Correções no próprio script de screenshots (feitas na Phase 0)
+O `scripts/screenshots.mjs` original não capturava a tela do editor e trocava o tema por engano. Motivos e ajustes:
+1. **Login nunca rodava:** a tela de login renderiza em `/` (não existe rota `/login`; o gate é em `App.tsx`), então `url.includes("/login")` era sempre falso e a captura saía com 401. Agora detecta `#login-email`.
+2. **Editor pulava:** a Home abre o editor via `window.location.href` (botão), não por `<a href>`, então o seletor `a[href*="campanha"]` não achava nada. Agora lê o id em `GET /api/campanhas`.
+3. **Tema invertido:** clicar no toggle para "claro" e depois para "escuro" alternava de verdade (ficava invertido). Agora grava `localStorage["vca-tema"]` e recarrega — determinístico.
+
+### Estado do repositório no baseline (problema da Phase 1 confirmado)
+- `git ls-files` = 281 arquivos, dos quais **177 em `referencia/`** e **46 `Thumbs.db`**.
+- Tamanho de `.git`: **37,79 MB**.
+- `.gitignore` sem `referencia/`, `Thumbs.db`, `*.Zone.Identifier`, `.DS_Store`.
+- **Decisão do dono (23/11/2026):** os arquivos de `referencia/` já foram apagados do disco pelo usuário (só sobrou `referencia/PROMPT-FIXES.md`). O prompt manda `git rm -r --cached` *sem* apagar do disco, mas a decisão é **manter apagados** e seguir — registro aqui para não virar surpresa depois. O `data/logos/` continua versionado (o app precisa dele).
+
+### Verificação do `DECISOES.md` (antecipa a Phase 4.3)
+- UTF-8 sem BOM (primeiro byte `0x23` = `#`), **0** sequências literais `\uXXXX`, **0** caracteres de controle. Nada a corrigir.

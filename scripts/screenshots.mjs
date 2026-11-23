@@ -15,26 +15,23 @@ console.log("diretório de saída:", OUT);
 
 async function login(page) {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
-  const url = page.url();
-  if (url.includes("/login")) {
-    await page.waitForSelector('input[type="email"]', { timeout: 5000 });
-    await page.type('input[type="email"]', "admin@vca.com");
-    await page.type('input[type="password"]', "admin123");
+  // a tela de login renderiza em "/" (sem rota /login); detecta pelo formulário
+  const campoEmail = await page.$("#login-email");
+  if (campoEmail) {
+    await page.waitForSelector("#login-email", { timeout: 5000 });
+    await page.type("#login-email", "admin@vca.com");
+    await page.type("#login-senha", "admin123");
     await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: "networkidle0" });
+    await page.waitForFunction(() => !document.querySelector("#login-email"), { timeout: 8000 });
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 500)));
   }
 }
 
 async function setTheme(page, tema) {
-  const toggle = await page.$('button[aria-label*="tema"], button[aria-label*="theme"], [data-tema]');
-  if (toggle) {
-    await toggle.click();
-    await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
-  } else {
-    await page.evaluate((t) => {
-      document.documentElement.dataset.theme = t;
-    }, tema);
-  }
+  // define o tema de forma determinística (o toggle alternaria sempre)
+  await page.evaluate((t) => localStorage.setItem("vca-tema", t), tema);
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
 }
 
 async function capturar(page, nome, tema, rota) {
@@ -63,13 +60,26 @@ async function capturar(page, nome, tema, rota) {
   await capturar(page, "usuarios", "claro", "/?tela=usuarios");
   await capturar(page, "usuarios", "escuro", "/?tela=usuarios");
 
-  const campanhas = await page.evaluate(() => {
-    const links = Array.from(document.querySelectorAll('a[href*="campanha"]'));
-    return links.map((l) => l.getAttribute("href"));
+  // A home abre o editor por botão (window.location), não por <a href>,
+  // então o id da campanha vem da API.
+  const diagnostico = await page.evaluate(async () => {
+    const r = await fetch("/api/campanhas");
+    const corpo = await r.text();
+    let ids = [];
+    if (r.ok) {
+      try {
+        const lista = JSON.parse(corpo);
+        ids = (Array.isArray(lista) ? lista : []).map((c) => c.id);
+      } catch { /* corpo inválido */ }
+    }
+    return { status: r.status, url: location.href, ids, amostra: corpo.slice(0, 120) };
   });
+  console.log("campanhas:", JSON.stringify(diagnostico));
+  const campanhas = diagnostico.ids;
   if (campanhas.length > 0) {
-    await capturar(page, "editor", "claro", campanhas[0]);
-    await capturar(page, "editor", "escuro", campanhas[0]);
+    const rota = `/?campanha=${encodeURIComponent(campanhas[0])}`;
+    await capturar(page, "editor", "claro", rota);
+    await capturar(page, "editor", "escuro", rota);
   } else {
     console.log("nenhuma campanha encontrada; pulando editor");
   }
