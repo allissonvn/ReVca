@@ -4,7 +4,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Ele vale para todo o projeto
 
 ## 1. Objetivo
 
-Software **local** para montar e editar o PDF mensal "Parcelamento Matriz" (condições comerciais de empreendimentos). A **arte é fixa**; o usuário altera só o **conteúdo** (textos, títulos de blocos, empreendimento, mês). Saídas: **PDF** (uma página por página da campanha) e **PNG** por página (para WhatsApp).
+Software **local** para montar e editar o PDF mensal "REVCA" (condições comerciais de empreendimentos). A **arte é fixa**; o usuário altera só o **conteúdo** (textos, títulos de blocos, empreendimento, mês). Saídas: **PDF** (uma página por página da campanha) e **PNG** por página (para WhatsApp).
 
 Referências na pasta `referencia/`:
 - `MATRIZ_-_PARC__INTERNO_01_11_26.pdf`: o PDF original feito no Canva (19 páginas, 25 cartões). É a fonte da verdade visual.
@@ -27,16 +27,16 @@ Referências na pasta `referencia/`:
 
 ```
 AGENTS.md  PROMPT.md  DECISOES.md  package.json  tsconfig.json
-referencia/            PDF original e protótipo (somente leitura)
+docs/            LIMPEZA-REPO.md (roteiro de limpeza do historico, nao executado)
 data/
-  campanhas/           um arquivo JSON por campanha
+  campanhas/           um arquivo JSON por campanha (gitignored, criado pelo seed)
   catalogos/           empreendimentos.json  titulos.json  tipos-bloco.json  modelos.json
-  logos/               logo-vca.svg, watermark.svg e logos dos empreendimentos
+  logos/               logo-vca.png, watermark.png e logos dos empreendimentos (PNGs)
   historico/           cópias antigas das campanhas (gitignored)
 src/shared/            tipos Zod, markup, layout, render (usado por cliente E servidor)
 src/server/            index.ts, rotas, storage, export
-src/client/            index.html, main.tsx, store.tsx, telas/, componentes/, estilos
-tests/
+src/client/            index.html, main.tsx, store.tsx, telas/, componentes/, ui/, estilos
+tests/                 Vitest (fixtures em tests/helpers/)
 iniciar.bat  iniciar.sh
 ```
 
@@ -73,6 +73,15 @@ Bloco    { id; tipo: TipoBlocoId; ativo: boolean; largura: 1 | 2;
 - `empreendimentos.json`: `{ id, nome: string[], faixa, logo: string | null }`. `logo` é um arquivo em `data/logos/`; se faltar, a arte mostra um marcador tracejado com o nome.
 
 O tipo do bloco só dá **defaults** (título, cor, largura). O usuário pode mudar título (lista pronta ou texto livre), cor e largura de qualquer bloco.
+
+## 5.5. Design system (interface do editor)
+
+A interface do editor usa tokens CSS em `src/client/estilos/tokens.css` e componentes UI reutilizáveis em `src/client/ui/` (`Button`, `IconButton`, `Field`, `Card`, `Chip`, `Badge`, `Avatar`, `Mark`, `Logo`, `SearchField`, `Segmented`, `Toast`, `ConfirmDialog`).
+
+- **Tokens** (variáveis CSS): cores primárias (`--primario`, `--primario-texto`), superfícies (`--superficie`, `--superficie-2`), bordas (`--borda`), sombras (`--sombra`), raio (`--raio`), estados de feedback (`--ok` verde, `--danger` vermelho).
+- **Ícones**: usam `lucide-react`. Todo botão apenas com ícone deve ter `aria-label`. Não usar emoji como ícone nem como texto de status (usar componente de ícone + texto).
+- **Tema claro/escuro** só no painel do editor; a página da arte é sempre clara (`document.documentElement.dataset.theme` controlado pela store).
+- **Acessabilidade básica**: `label`/`aria-label` em todo controle, foco visível (`--focus-ring`), navegação por teclado, `prefers-reduced-motion` respeitado, diálogos prendem e devolvem o foco, Esc fecha.
 
 ## 5. Regras de renderização (a arte)
 

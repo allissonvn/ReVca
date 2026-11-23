@@ -1,6 +1,6 @@
 # Editor de Condições Comerciais (VCA)
 
-Aplicativo **local** para montar e editar o PDF mensal "Parcelamento Matriz" (condições comerciais de empreendimentos). A arte é fixa; você altera só o conteúdo: textos, títulos de blocos, empreendimento, mês. Saídas: **PDF** (uma página por página da campanha) e **PNG** por página (para WhatsApp).
+Aplicativo **local** para montar e editar o PDF mensal "REVCA" (condições comerciais de empreendimentos). A arte é fixa; você altera só o conteúdo: textos, títulos de blocos, empreendimento, mês. Saídas: **PDF** (uma página por página da campanha) e **PNG** por página (para WhatsApp).
 
 ## Como usar (usuário final)
 
