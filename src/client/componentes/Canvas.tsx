@@ -25,6 +25,8 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const cssDestaque = useRef<HTMLStyleElement | null>(null);
 
   // aplica escala sempre que o zoom mudar
+  // usa transform origin top left + translate para centralizar o documento
+  // ao fazer zoom, evitando que fique grudado no canto superior esquerdo
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
@@ -32,7 +34,8 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
       m.style.transformOrigin = "top left";
       m.style.willChange = "transform";
-      m.style.transform = `scale(${escala})`;
+      // centraliza: translation para o centro, escala, então volta ao original
+      m.style.transform = `translate(-50%, -50%) scale(${escala}) translate(50%, 50%)`;
       // tamanho do frame baseado no zoom para o container pai reconhecer o
       // espaco necessario ao scroll (sem wrapper moldura, como pedido)
       m.style.width = `${LARGURA_PAGINA * escala}px`;
