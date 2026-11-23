@@ -33,8 +33,9 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       m.style.transformOrigin = "top left";
       m.style.willChange = "transform";
       m.style.transform = `scale(${escala})`;
-      m.style.width = `${LARGURA_PAGINA}px`;
-      m.style.height = `${ALTURA_PAGINA}px`;
+      // reajusta as margens do frame para acompanhar o zoom sem cortar o documento
+      m.style.width = `${LARGURA_PAGINA * escala}px`;
+      m.style.height = `${ALTURA_PAGINA * escala}px`;
     });
   }, [e.zoom]);
 
