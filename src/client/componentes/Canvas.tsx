@@ -33,9 +33,9 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       m.style.transformOrigin = "top left";
       m.style.willChange = "transform";
       m.style.transform = `scale(${escala})`;
-      // reajusta as margens do frame para acompanhar o zoom sem cortar o documento
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
+      // tamanho fixo da página; o transform escala o desenho, o canvas faz scroll se transbordar
+      m.style.width = `${LARGURA_PAGINA}px`;
+      m.style.height = `${ALTURA_PAGINA}px`;
     });
   }, [e.zoom]);
 
