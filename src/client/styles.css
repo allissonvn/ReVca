@@ -194,7 +194,7 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 }
 .moldura {
   border-radius: 4px; box-shadow: var(--sombra); cursor: pointer; flex: none;
-  background: #fff;
+  background: #fff; overflow: hidden;
 }
 .moldura .escala { overflow: hidden; transform-origin: top left; }
 .aviso-estouro {

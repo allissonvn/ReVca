@@ -33,9 +33,9 @@ export async function exportar(opcoes: OpcoesExport, aoStatus: (s: string) => vo
       URL.revokeObjectURL(a.href);
       ok++;
     }
-    aoStatus(alvo.length > 1 ? `✓ ${ok} arquivos gerados` : "✓ Arquivo gerado");
+    aoStatus(alvo.length > 1 ? `${ok} arquivos gerados` : "Arquivo gerado");
   } catch (e) {
-    aoStatus(`✗ Erro ao exportar: ${e instanceof Error ? e.message : String(e)}`);
+    aoStatus(`Erro ao exportar: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 

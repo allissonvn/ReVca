@@ -26,7 +26,7 @@ import { exportar } from "../exportar.js";
 import { Mark } from "../ui/Mark.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
-import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck, AlertTriangle, CheckCircle } from "lucide-react";
+import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck, AlertTriangle, AlertCircle, CheckCircle } from "lucide-react";
 
 const MESES = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
@@ -138,11 +138,11 @@ export function Editor({ id }: { id: string }): JSX.Element {
           ) : estado.status === "salvando" ? (
             <span className="status salvando">… Salvando</span>
           ) : estado.status === "sujo" ? (
-            <span className="status sujo">● Alterações pendentes</span>
+            <span className="status sujo">Alterações pendentes</span>
           ) : estado.status === "erro" ? (
-            <span className="status erro">✗ Erro ao salvar</span>
+            <span className="status erro"><AlertCircle size={14} strokeWidth={2} aria-hidden="true" /> Erro ao salvar</span>
           ) : (
-            <span className="status conflito">✗ Conflito: mudou em outro lugar</span>
+            <span className="status conflito"><AlertCircle size={14} strokeWidth={2} aria-hidden="true" /> Conflito: mudou em outro lugar</span>
           )}
         </div>
         <div className="topbar-acoes">

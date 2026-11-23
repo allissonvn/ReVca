@@ -1,11 +1,11 @@
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
 // Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
-// visualmente quanto reportando o mapa de estouros ao editor (badges ⚠).
+// visualmente quanto reportando o mapa de estouros ao editor.
 // Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
-import { useLayoutEffect, useRef, useEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
 import { artCssEscopo, renderPagina } from "../../shared/render.js";
-import { estado, useEstado, notificarConteudo, selecionarBloco, selecionarPagina, limparSelecaoBloco } from "../store.js";
+import { estado, useEstado, notificarConteudo, selecionarBloco, selecionarPagina } from "../store.js";
 
 const LARGURA_PAGINA = 924;
 const ALTURA_PAGINA = 1308;
