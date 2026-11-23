@@ -215,6 +215,12 @@ export function refazer(): void {
 
 // ---- seleção de bloco (Phase 4) ----
 
+/** Seleciona uma página na prévia (índice). */
+export function selecionarPagina(i: number): void {
+  estado.pagSelecionada = i;
+  notificarConteudo();
+}
+
 /** Seleciona um bloco para edição no painel direito. */
 export function selecionarBloco(ci: number, bi: number): void {
   estado.blocoSelecionado = { ci, bi };

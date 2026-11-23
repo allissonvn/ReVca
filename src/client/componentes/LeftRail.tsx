@@ -5,7 +5,7 @@ import type { DragEvent, JSX } from "react";
 import { renderCampanha } from "../../shared/render.js";
 import { Pagina } from "../../shared/schema.js";
 import { modeloDe } from "../store.js";
-import { estado, useEstado, marcarSujo, notificarConteudo } from "../store.js";
+import { estado, useEstado, marcarSujo, notificarConteudo, selecionarPagina } from "../store.js";
 import { SearchField } from "../ui/SearchField.js";
 import { Button } from "../ui/Button.js";
 import { GripVertical, CopyPlus, Trash2 } from "lucide-react";
@@ -15,7 +15,7 @@ const ALTURA_THUMB = 48;
 const ESCALA_THUMB = LARGURA_THUMB / 924;
 
 type Props = {
-  estouros: Map<string, number>;
+  estouros: Map<string, { altura: number; cartaoId?: string }>;
   somenteLeitura: boolean;
 };
 
@@ -183,7 +183,7 @@ type ItemProps = {
   total: number;
   empNome: string;
   modeloNome: string;
-  estouro?: number;
+  estouro?: { altura: number; cartaoId?: string };
   arrastando: boolean;
   soltarAqui: boolean;
   somenteLeitura: boolean;
@@ -245,7 +245,7 @@ function ItemPagina({
       onDragLeave={somenteLeitura ? undefined : aoSair}
       onDrop={somenteLeitura ? undefined : aoSoltar}
       onDragEnd={somenteLeitura ? undefined : aoTerminar}
-      onClick={() => { estado.pagSelecionada = i; notificarConteudo(); }}
+      onClick={() => { selecionarPagina(i); }}
     >
       <div className="rail-mini">
         <span className="rail-mini-escala arte"
@@ -253,7 +253,7 @@ function ItemPagina({
           dangerouslySetInnerHTML={{ __html: html }}
         />
         {estouro !== undefined && (
-          <span className="rail-estouro" title={`Conteúdo maior que a página (${estouro}px)`}>⚠</span>
+          <span className="rail-estouro" title={`Conteúdo maior que a página (${estouro.altura}px)`}>!</span>
         )}
       </div>
       <div className="rail-info">

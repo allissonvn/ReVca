@@ -26,7 +26,7 @@ import { exportar } from "../exportar.js";
 import { Mark } from "../ui/Mark.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
-import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck } from "lucide-react";
+import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck, AlertTriangle, CheckCircle } from "lucide-react";
 
 const MESES = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
@@ -35,8 +35,8 @@ export function Editor({ id }: { id: string }): JSX.Element {
   const [erro, setErro] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [statusExport, setStatusExport] = useState("");
-  // páginas com estouro (id → altura), medido pelo canvas
-  const [estouros, setEstouros] = useState(new Map<string, number>());
+  // páginas com estouro (id → { altura, cartaoId }), medido pelo canvas
+  const [estouros, setEstouros] = useState(new Map<string, { altura: number; cartaoId?: string }>());
   // leitor: visualiza a arte e as páginas (só seleção); sem campos de edição
   const leitor = !podeEditar();
 
@@ -80,15 +80,19 @@ export function Editor({ id }: { id: string }): JSX.Element {
   }
 
   const statusTextos: Record<string, string> = {
-    salvo: "✓ Tudo salvo",
-    salvando: "… Salvando",
-    sujo: "● Alterações pendentes",
-    erro: "✗ Erro ao salvar",
-    conflito: "✗ Conflito: mudou em outro lugar",
+    salvo: "Tudo salvo",
+    salvando: "Salvando",
+    sujo: "Alterações pendentes",
+    erro: "Erro ao salvar",
+    conflito: "Conflito: mudou em outro lugar",
   };
 
   const pagSelecionada = c.paginas[estado.pagSelecionada];
-  const cabeNaPagina = pagSelecionada ? !estouros.has(pagSelecionada.id) : true;
+  const estouro = pagSelecionada ? estouros.get(pagSelecionada.id) : undefined;
+  const cabeNaPagina = !estouro;
+  const nomeCartaoEstouro = estouro?.cartaoId
+    ? c.paginas[estado.pagSelecionada]?.cartoes.find((cart) => cart.id === estouro.cartaoId)?.titulo[0]
+    : "";
 
   return (
     <div className="editor">
@@ -191,9 +195,9 @@ export function Editor({ id }: { id: string }): JSX.Element {
       {/* Status da página */}
       <div className="canvas-status">
         {cabeNaPagina ? (
-          <span className="status-ok">✓ Cabe na página</span>
+          <span className="status-ok"><CheckCircle size={12} strokeWidth={2} aria-hidden="true" /> Cabe na página</span>
         ) : (
-          <span className="status-estouro">⚠ Conteúdo passa do limite</span>
+          <span className="status-estouro"><AlertTriangle size={12} strokeWidth={2} aria-hidden="true" /> Conteúdo passa do limite — <span className="status-estouro-cartao">"{nomeCartaoEstouro}" será cortado no PDF</span></span>
         )}
       </div>
 
@@ -203,6 +207,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
         aoMudarZoom={(z) => { definirZoom(z); }}
         ajustado={estado.zoomAjustado}
         aoAlternarAjuste={(ajustado) => { alternarAjusteTela(ajustado); }}
+        cabeNaPagina={cabeNaPagina}
       />
 
       {modalAberto && (

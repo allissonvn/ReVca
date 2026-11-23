@@ -200,6 +200,13 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 .aviso-estouro {
   background: #fff3cd; color: #7a5b00; border: 1px solid #e8d48a;
   padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; margin-bottom: 6px;
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.aviso-estouro:hover { background: #fde3a3; }
+.estouro-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; background: #7a5b00; color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 1; flex-shrink: 0;
 }
 
 /* ---------- painel direito (propriedades) ---------- */

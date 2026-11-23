@@ -2,7 +2,7 @@
 // 25–200%, default "fit to screen", Ctrl+wheel, teclas +, -, 0.
 import type { JSX } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Minus, Plus, Maximize, Minimize2 } from "lucide-react";
+import { Minus, Plus, Maximize, Minimize2, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
 
@@ -15,6 +15,8 @@ type ZoomBarProps = {
   ajustado: boolean;
   /** Alternar fit to screen. */
   aoAlternarAjuste: (ajustado: boolean) => void;
+  /** Se a página selecionada cabe no limite de altura. */
+  cabeNaPagina: boolean;
 };
 
 const ZOOM_MIN = 0.25;
@@ -26,6 +28,7 @@ export function ZoomBar({
   aoMudarZoom,
   ajustado,
   aoAlternarAjuste,
+  cabeNaPagina,
 }: ZoomBarProps): JSX.Element {
   const pct = Math.round(zoom * 100);
 
@@ -95,6 +98,13 @@ export function ZoomBar({
         {ajustado ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize size={14} strokeWidth={2} />}
       </button>
       <span className="zoom-dica">{ajustado ? "Ajustar à tela" : "100%"}</span>
+      <span className={`zoom-status ${cabeNaPagina ? "zoom-status-ok" : "zoom-status-estouro"}`}>
+        {cabeNaPagina ? (
+          <><CheckCircle size={12} strokeWidth={2} aria-hidden="true" /> Cabe na página</>
+        ) : (
+          <><AlertTriangle size={12} strokeWidth={2} aria-hidden="true" /> Conteúdo passa do limite</>
+        )}
+      </span>
     </div>
   );
 }

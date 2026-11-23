@@ -273,7 +273,6 @@ ${cols}
 }
 
 function renderBloco(bloco: BlocoAtivo): string {
-  const largura = bloco.largura === 2 ? "100%" : "50%";
   const tituloChip = bloco.titulo.trim().length > 0
     ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo.trim())}</div>`
     : "";
@@ -283,7 +282,10 @@ function renderBloco(bloco: BlocoAtivo): string {
     .filter((l) => l.trim().length > 0)
     .map((l) => `<div class="chip">${renderLinha(l.trim())}</div>`)
     .join("\n");
-  return `<div class="bloco-col" style="width:${largura}" data-bloco="${escapeHtml(bloco.id)}">
+  const larguraPct = bloco.largura === 2 ? "100%" : "50%";
+  // data-bloco-nome: atributo puro de metadados (tipo do bloco). Só é usado pelo
+  // editor para o destaque do bloco selecionado; nunca altera a arte do PDF.
+  return `<div class="bloco-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(bloco.tipo)}">
 ${tituloChip}
 ${chips}
 </div>`;

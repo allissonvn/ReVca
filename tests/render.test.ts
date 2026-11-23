@@ -246,6 +246,32 @@ describe("renderCampanha", () => {
     const html2 = renderDocumento(CampanhaSchema.parse(c), carregarCatalogos());
     expect(html2).toContain("Válido até 30/11");
   });
+
+  it("renderBloco emite data-bloco-nome com o tipo do bloco", () => {
+    expect(html).toContain('data-bloco="blo-1" data-bloco-nome="financiamento"');
+    expect(html).toContain('data-bloco="blo-4" data-bloco-nome="observacao"');
+    expect(html).toContain('data-bloco="blo-16" data-bloco-nome="texto"');
+  });
+
+  it("data-bloco-nome não altera o restante do markup (semântica da exportação inalterada)", () => {
+    const comNome = renderCampanha(campanhaSeed, carregarCatalogos());
+    // strip do atributo (simula render antigo) -> conteúdo deve ser idêntico ao original
+    const semNome = comNome.replace(/ data-bloco-nome="[^"]*"/g, "");
+    expect(semNome).toContain('<div class="bloco-col" style="width:100%" data-bloco="blo-1">');
+    expect(semNome).toContain('<div class="bloco-col" style="width:50%" data-bloco="blo-2">');
+    // o atributo não vira classe nem estilo: nada de outline nos blocos
+    expect(semNome).not.toContain("outline");
+    expect(semNome).not.toContain("--primary");
+  });
+
+  it("documento de exportação não contém regra de destaque do bloco selecionado", () => {
+    const doc = renderDocumento(campanhaSeed, carregarCatalogos());
+    // data-bloco-nome é metadados inofensivo (está presente), mas nunca vira CSS de destaque
+    expect(doc).toContain('data-bloco-nome="financiamento"');
+    expect(doc).not.toContain("::before");
+    expect(doc).not.toContain("outline");
+    expect(doc).not.toContain("--primary");
+  });
 });
 
 describe("renderDocumento", () => {

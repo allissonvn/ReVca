@@ -5,17 +5,17 @@
 import { useLayoutEffect, useRef, useEffect } from "react";
 import type { JSX } from "react";
 import { artCssEscopo, renderPagina } from "../../shared/render.js";
-import { estado, useEstado, notificarConteudo, selecionarBloco, limparSelecaoBloco } from "../store.js";
+import { estado, useEstado, notificarConteudo, selecionarBloco, selecionarPagina, limparSelecaoBloco } from "../store.js";
 
 const LARGURA_PAGINA = 924;
 const ALTURA_PAGINA = 1308;
 const TEM_ESTOURO = ALTURA_PAGINA + 2;
 
 type Props = {
-  /** Mapa idDaPágina → altura do conteúdo (páginas com estouro). */
-  estouros: Map<string, number>;
+  /** Mapa idDaPágina → { altura, cartaoId? } das páginas com estouro. */
+  estouros: Map<string, { altura: number; cartaoId?: string }>;
   /** Callback quando o mapa de estouros muda. */
-  aoEstouro?: (estouros: Map<string, number>) => void;
+  aoEstouro?: (estouros: Map<string, { altura: number; cartaoId?: string }>) => void;
 };
 
 export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
@@ -23,6 +23,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const cssInjetado = useRef(false);
   const ultimoMapa = useRef("");
+  const cssDestaque = useRef<HTMLStyleElement | null>(null);
 
   // aplica escala sempre que o zoom mudar
   useLayoutEffect(() => {
@@ -30,33 +31,38 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     if (!el) return;
     const escala = Math.max(0.25, Math.min(2, e.zoom));
     el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
-      m.style.transformOrigin = "center top";
+      m.style.transformOrigin = "top left";
       m.style.willChange = "transform";
       m.style.transform = `scale(${escala})`;
       m.style.width = `${LARGURA_PAGINA}px`;
       m.style.height = `${ALTURA_PAGINA}px`;
     });
+    // moldura segue o zoom: tamanho explícito = página × zoom
+    el.querySelectorAll<HTMLElement>(".moldura").forEach((m) => {
+      m.style.width = `${LARGURA_PAGINA * escala}px`;
+      m.style.height = `${ALTURA_PAGINA * escala}px`;
+    });
   }, [e.zoom]);
 
   useLayoutEffect(() => {
     if (!cssInjetado.current) {
-      // escopado em ".arte": classes genéricas da arte (.cabecalho, .faixa-verde)
-      // não podem vazar para a UI dos painéis
       const style = document.createElement("style");
       style.textContent = artCssEscopo(".arte");
       document.head.appendChild(style);
       cssInjetado.current = true;
     }
-    const id = requestAnimationFrame(medirEstouros);
+    const id = requestAnimationFrame(() => {
+      document.fonts.ready.then(() => medirEstouros());
+    });
     const onResize = () => { /* escala já atualizada pelo effect de zoom */ };
     window.addEventListener("resize", onResize);
     return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
-  }, []);
+  }, [e.campanha?.revisao, e.campanha?.paginas.length]);
 
   /** Altura real do conteúdo, em px da arte. Elementos absolutos são a marca
    *  d'água (que sai da página de propósito) e as tags de seleção do editor —
    *  não contam como conteúdo; sem isso a página "estourava" falsamente. */
-  function alturaConteudo(pag: HTMLElement): number {
+  function alturaConteudo(pag: HTMLElement): { altura: number; cartaoId?: string } {
     const rect = pag.getBoundingClientRect();
     const escala = rect.width / LARGURA_PAGINA || 1;
     let max = ALTURA_PAGINA;
@@ -66,62 +72,95 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       const fundo = (filho.getBoundingClientRect().bottom - rect.top) / escala;
       if (fundo > max) max = fundo;
     });
-    return Math.round(max);
+    return { altura: Math.round(max), cartaoId: cartaoEstourado(pag) };
+  }
+
+  /** Qual cartão (se algum) passa do limite da página? Retorna o id do cartão. */
+  function cartaoEstourado(pag: HTMLElement): string | undefined {
+    const rect = pag.getBoundingClientRect();
+    const escala = rect.width / LARGURA_PAGINA || 1;
+    for (const c of pag.querySelectorAll<HTMLElement>(".cartao")) {
+      const fundo = (c.getBoundingClientRect().bottom - rect.top) / escala;
+      if (fundo > ALTURA_PAGINA) return c.dataset.cartao ?? undefined;
+    }
+    return undefined;
   }
 
   function medirEstouros(): void {
     const el = container.current;
     if (!el) return;
     el.querySelectorAll(".aviso-estouro").forEach((a) => a.remove());
-    const mapa = new Map<string, number>();
+    const mapa = new Map<string, { altura: number; cartaoId?: string }>();
     el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
-      const conteudo = alturaConteudo(pag);
-      // comparação em px da arte: alturaConteudo já corrige pela escala
-      if (conteudo > TEM_ESTOURO) {
-        mapa.set(pag.dataset.pagina ?? "", conteudo);
+      const { altura, cartaoId } = alturaConteudo(pag);
+      if (altura > TEM_ESTOURO) {
+        mapa.set(pag.dataset.pagina ?? "", { altura, cartaoId });
+        const campanha = estado.campanha;
+        const pagina = campanha?.paginas.find((p) => p.id === pag.dataset.pagina);
+        const cartao = cartaoId && pagina
+          ? pagina.cartoes.find((c) => c.id === cartaoId)
+          : undefined;
+        const nomeCartao = cartao?.titulo[0] ?? cartaoId ?? "um cartão";
         const aviso = document.createElement("div");
         aviso.className = "aviso-estouro";
-        aviso.textContent = `⚠ Conteúdo maior que a página: ${conteudo}px de ${ALTURA_PAGINA}px. O que passar será cortado no PDF.`;
+        aviso.role = "alert";
+        aviso.tabIndex = 0;
+        aviso.title = `Conteúdo maior que a página: ${altura}px de ${ALTURA_PAGINA}px.`;
+        aviso.innerHTML = `<span class="estouro-icon" aria-hidden="true">!</span>
+          <span>Conteúdo maior que a página (${altura}px de ${ALTURA_PAGINA}px): "${nomeCartao}" será cortado no PDF.</span>`;
+        const aoCliqueAviso = () => {
+          if (!cartaoId || !pagina) return;
+          const ci = pagina.cartoes.findIndex((c) => c.id === cartaoId);
+          if (ci >= 0) selecionarBloco(ci, 0);
+          notificarConteudo();
+        };
+        aviso.onclick = aoCliqueAviso;
+        aviso.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") aoCliqueAviso(); };
         pag.closest(".moldura")?.before(aviso);
       }
     });
-    const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v}`).join("|");
+    const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v.altura}:${v.cartaoId ?? ""}`).join("|");
     if (assinatura !== ultimoMapa.current) {
       ultimoMapa.current = assinatura;
       aoEstouro?.(mapa);
     }
   }
 
-  // Destaca o bloco selecionado com outline + name tag
+  // Destaca o bloco selecionado via regra CSS scoped (sem tocar no DOM).
+  // A regra só existe no editor (nunca no render.ts / PDF exportado).
   useLayoutEffect(() => {
     const sel = estado.blocoSelecionado;
     const el = container.current;
-    limparSelecaoBlocoDOM();
+    limparEstiloDestaque();
     if (!sel || !el) return;
-    // data-bloco guarda o ID do bloco (não o índice): resolve pelo modelo
     const pagina = estado.campanha?.paginas[estado.pagSelecionada];
     const bloco = pagina?.cartoes[sel.ci]?.blocos[sel.bi];
     if (!bloco) return;
-    const alvo = Array.from(el.querySelectorAll<HTMLElement>("[data-bloco]"))
-      .find((b) => b.dataset.bloco === bloco.id);
-    if (!alvo) return;
-    alvo.style.outline = `2px solid var(--primary)`;
-    alvo.style.outlineOffset = "4px";
-    alvo.style.position = "relative";
-    const tag = document.createElement("div");
-    tag.className = "bloco-tag";
-    tag.textContent = `Bloco ${sel.bi + 1}`;
-    tag.style.position = "absolute";
-    tag.style.top = "-16px";
-    tag.style.left = "4px";
-    tag.style.background = "var(--primary)";
-    tag.style.color = "#0b1020";
-    tag.style.fontSize = "10px";
-    tag.style.fontWeight = "700";
-    tag.style.padding = "1px 6px";
-    tag.style.borderRadius = "4px";
-    tag.style.zIndex = "10";
-    alvo.prepend(tag);
+    const estilo = document.createElement("style");
+    estilo.type = "text/css";
+    estilo.textContent = `
+      .arte [data-bloco="${escapeCssId(bloco.id)}"] {
+        outline: 2px solid var(--primary);
+        outline-offset: 4px;
+        position: relative;
+      }
+      .arte [data-bloco="${escapeCssId(bloco.id)}"]::before {
+        content: attr(data-bloco-nome);
+        position: absolute;
+        top: -16px;
+        left: 4px;
+        background: var(--primary);
+        color: #0b1020;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+        z-index: 10;
+      }
+    `;
+    document.head.appendChild(estilo);
+    cssDestaque.current = estilo;
+    return () => limparEstiloDestaque();
   }, [estado.blocoSelecionado, estado.pagSelecionada, estado.verTodas]);
 
   // Clique em bloco: seleciona no painel direito (Phase 4)
@@ -150,15 +189,16 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     return () => el.removeEventListener("click", handler);
   }, [selecionarBloco, notificarConteudo]);
 
-  function limparSelecaoBlocoDOM(): void {
-    const el = container.current;
-    if (!el) return;
-    el.querySelectorAll<HTMLElement>("[data-bloco]").forEach((b) => {
-      b.style.outline = "";
-      b.style.outlineOffset = "";
-      b.style.position = "";
-    });
-    el.querySelectorAll<HTMLElement>(".bloco-tag").forEach((t) => t.remove());
+  function limparEstiloDestaque(): void {
+    if (cssDestaque.current) {
+      cssDestaque.current.remove();
+      cssDestaque.current = null;
+    }
+  }
+
+  /** Escapa um identificador para uso em seletor CSS (atributo data-bloco). */
+  function escapeCssId(id: string): string {
+    return id.replace(/[\\."]/g, "\\$&");
   }
 
   const { campanha, catalogos } = e;
@@ -183,7 +223,7 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
         <div
           className="moldura"
           key={p.id}
-          onClick={() => { if (estado.pagSelecionada !== i) { estado.pagSelecionada = i; notificarConteudo(); } }}
+          onClick={() => { selecionarPagina(i); } }
         >
           <div
             className="escala arte"
