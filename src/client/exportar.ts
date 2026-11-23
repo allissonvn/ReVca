@@ -26,18 +26,18 @@ export async function exportar(opcoes: OpcoesExport, aoStatus: (s: string) => vo
   try {
     await salvarAgora(); // exporta o que está na tela
 
-    // PDF com "todas" as páginas: o servidor já retorna um único PDF com
-    // todas as páginas quando nao especifica pagina. Faz so uma requisicao.
-    // PNG com "todas": gera um arquivo por pagina, entao faz requisicao por pagina.
     const alvo = opcoes.pagina === "todas" ? c.paginas.map((_, i) => i + 1) : [opcoes.pagina];
     let ok = 0;
     try {
       for (const n of alvo) {
-        // PDF: so uma requisicao para todas as pagina. PNG: uma requisicao por pagina.
+        // PDF: so uma requisicao para todas as paginas (o servidor retorna o
+        // PDF completo quando nao especifica pagina).
+        // PDF com pagina unica: envia &pagina=n para baixar so essa pagina.
+        // PNG: uma requisicao por pagina, sempre com &pagina=n.
         if (opcoes.formato === "pdf" && ok > 0) break;
         aoStatus(alvo.length > 1 ? `Gerando… (${ok + 1}/${alvo.length})` : "Gerando…");
         let url = `/api/campanhas/${encodeURIComponent(c.id)}/exportar?formato=${opcoes.formato}&qualidade=${opcoes.qualidade}`;
-        if (opcoes.formato === "png" && alvo.length === 1) url += `&pagina=${n}`;
+        if (opcoes.formato === "png" || alvo.length === 1) url += `&pagina=${n}`;
         const resp = await fetch(url, { method: "POST" });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
