@@ -36,11 +36,6 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       m.style.width = `${LARGURA_PAGINA}px`;
       m.style.height = `${ALTURA_PAGINA}px`;
     });
-    // moldura segue o zoom: tamanho explícito = página × zoom
-    el.querySelectorAll<HTMLElement>(".moldura").forEach((m) => {
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
-    });
   }, [e.zoom]);
 
   useLayoutEffect(() => {
@@ -124,8 +119,8 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
         };
         aviso.onclick = aoCliqueAviso;
         aviso.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") aoCliqueAviso(); };
-        const moldura = pag.closest(".moldura");
-        if (moldura) moldura.appendChild(aviso);
+        const escala = pag.parentElement;
+        if (escala) escala.before(aviso);
       }
     });
     const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v.altura}:${v.cartaoId ?? ""}`).join("|");
@@ -230,12 +225,12 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     <main className="canvas" ref={container}>
       {paginas.map(({ p, i }) => (
         <div
-          className="moldura"
+          className="escala arte"
           key={p.id}
           onClick={() => { selecionarPagina(i); } }
         >
           <div
-            className="escala arte"
+            className="pagina"
             dangerouslySetInnerHTML={{ __html: renderPagina(p, { campanha, catalogos }) }}
           />
         </div>

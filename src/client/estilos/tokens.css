@@ -937,14 +937,6 @@ a:focus-visible,
   gap: 16px;
   background: var(--canvas);
 }
-.canvas .moldura {
-  border-radius: 4px;
-  box-shadow: var(--shadow);
-  background: #fff;
-  cursor: default;
-  display: flex;
-  justify-content: center;
-}
 .zoom-bar {
   position: fixed;
   left: 50%;
