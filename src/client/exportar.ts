@@ -9,33 +9,46 @@ export type OpcoesExport = {
   pagina: "todas" | number;
 };
 
+// Evita exportações simultâneas que poderiam gerar downloads duplicados.
+let exportando = false;
+
+export function estaExportando(): boolean {
+  return exportando;
+}
+
 /** Exporta chamando POST /api/campanhas/:id/exportar. PNG sempre sai uma
  * página por arquivo; PDF pode sair completo ou só a página pedida. */
 export async function exportar(opcoes: OpcoesExport, aoStatus: (s: string) => void): Promise<void> {
+  if (exportando) return; // já está exportando, ignora chamadas duplicadas
   const c = estado.campanha;
   if (!c) return;
-  await salvarAgora(); // exporta o que está na tela
-  const alvo = opcoes.pagina === "todas" ? c.paginas.map((_, i) => i + 1) : [opcoes.pagina];
-  let ok = 0;
+  exportando = true;
   try {
-    for (const n of alvo) {
-      aoStatus(alvo.length > 1 ? `Gerando… (${ok + 1}/${alvo.length})` : "Gerando…");
-      let url = `/api/campanhas/${encodeURIComponent(c.id)}/exportar?formato=${opcoes.formato}&qualidade=${opcoes.qualidade}`;
-      if (alvo.length === 1) url += `&pagina=${n}`;
-      const resp = await fetch(url, { method: "POST" });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const blob = await resp.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      const disp = resp.headers.get("content-disposition") ?? "";
-      a.download = /filename="([^"]+)"/.exec(disp)?.[1] ?? `${c.titulo}.${opcoes.formato}`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      ok++;
+    await salvarAgora(); // exporta o que está na tela
+    const alvo = opcoes.pagina === "todas" ? c.paginas.map((_, i) => i + 1) : [opcoes.pagina];
+    let ok = 0;
+    try {
+      for (const n of alvo) {
+        aoStatus(alvo.length > 1 ? `Gerando… (${ok + 1}/${alvo.length})` : "Gerando…");
+        let url = `/api/campanhas/${encodeURIComponent(c.id)}/exportar?formato=${opcoes.formato}&qualidade=${opcoes.qualidade}`;
+        if (alvo.length === 1) url += `&pagina=${n}`;
+        const resp = await fetch(url, { method: "POST" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob = await resp.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const disp = resp.headers.get("content-disposition") ?? "";
+        a.download = /filename="([^"]+)"/.exec(disp)?.[1] ?? `${c.titulo}.${opcoes.formato}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        ok++;
+      }
+      aoStatus(alvo.length > 1 ? `${ok} arquivos gerados` : "Arquivo gerado");
+    } catch (e) {
+      aoStatus(`Erro ao exportar: ${e instanceof Error ? e.message : String(e)}`);
     }
-    aoStatus(alvo.length > 1 ? `${ok} arquivos gerados` : "Arquivo gerado");
-  } catch (e) {
-    aoStatus(`Erro ao exportar: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    exportando = false;
   }
 }
 

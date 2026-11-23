@@ -35,6 +35,7 @@ export function Editor({ id }: { id: string }): JSX.Element {
   const [erro, setErro] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [statusExport, setStatusExport] = useState("");
+  const [exportando, setExportando] = useState(false);
   // páginas com estouro (id → { altura, cartaoId }), medido pelo canvas
   const [estouros, setEstouros] = useState(new Map<string, { altura: number; cartaoId?: string }>());
   // leitor: visualiza a arte e as páginas (só seleção); sem campos de edição
@@ -169,8 +170,17 @@ export function Editor({ id }: { id: string }): JSX.Element {
           <Button
             variant="primary"
             icon="Download"
-            onClick={() => void exportar({ formato: "pdf", qualidade: "alta", pagina: "todas" }, setStatusExport)}
+            disabled={exportando}
+            aria-busy={exportando}
             title="PDF com todas as páginas (qualidade alta)"
+            onClick={async () => {
+              setExportando(true);
+              try {
+                await exportar({ formato: "pdf", qualidade: "alta", pagina: "todas" }, setStatusExport);
+              } finally {
+                setExportando(false);
+              }
+            }}
           >
             Baixar PDF
           </Button>
@@ -213,7 +223,10 @@ export function Editor({ id }: { id: string }): JSX.Element {
       {modalAberto && (
         <ModalExportar
           aoFechar={() => setModalAberto(false)}
-          aoExportar={(o) => void exportar(o, setStatusExport)}
+          aoExportar={(o) => {
+            setExportando(true);
+            exportar(o, setStatusExport).finally(() => setExportando(false));
+          }}
         />
       )}
     </div>
