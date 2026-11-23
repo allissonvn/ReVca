@@ -10,7 +10,7 @@
 // usuário" com UserPlus). Campos não ocupam a largura total da página.
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import { ApiErro, criarUsuario, definirUsuarioAtivo, listarUsuarios } from "../api.js";
+import { ApiErro, criarUsuario, definirUsuarioAtivo, listarUsuarios, redefinirSenhaUsuario } from "../api.js";
 import { UsuarioResumo } from "../../shared/schema.js";
 import { estado, notifier, useEstado } from "../store.js";
 import { Mark } from "../ui/Mark.js";
@@ -35,6 +35,9 @@ export function Usuarios(): JSX.Element {
   const [aviso, setAviso] = useState("");
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [excluindoNome, setExcluindoNome] = useState("");
+  const [redefinindoId, setRedefinindoId] = useState<string | null>(null);
+  const [redefinindoNome, setRedefinindoNome] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
 
   // Estado local do formulário (declarado antes de qualquer uso)
   const [form, setForm] = useState<{
@@ -64,6 +67,25 @@ export function Usuarios(): JSX.Element {
       notifier();
     } catch (e) {
       setErro(e instanceof ApiErro ? e.message : "Não foi possível alterar o usuário.");
+    }
+  }
+
+  async function redefinirSenha(u: UsuarioResumo): Promise<void> {
+    setErro(""); setAviso("");
+    if (!novaSenha || novaSenha.length < 6) {
+      setErro("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    try {
+      await redefinirSenhaUsuario(u.id, novaSenha);
+      setUsuarios((atual) => (atual ?? []).map((x) => (x.id === u.id ? { ...x } : x)));
+      setAviso(`Senha de ${u.nome} redefinida com sucesso.`);
+      setRedefinindoId(null);
+      setRedefinindoNome("");
+      setNovaSenha("");
+      notifier();
+    } catch (e) {
+      setErro(e instanceof ApiErro ? e.message : "Não foi possível redefinir a senha.");
     }
   }
 
@@ -177,8 +199,9 @@ export function Usuarios(): JSX.Element {
                             icon="KeyRound"
                             title="Redefinir senha deste usuário"
                             onClick={() => {
-                              // Phase 5: chama POST /api/auth/usuarios/:id/redefinir-senha
-                              setAviso("Redefinição de senha será liberada na próxima etapa.");
+                              setRedefinindoId(u.id);
+                              setRedefinindoNome(u.nome);
+                              setNovaSenha("");
                             }}
                           />
                         )}
@@ -293,6 +316,32 @@ export function Usuarios(): JSX.Element {
             }}
             aoCancelar={() => { setExcluindoId(null); setExcluindoNome(""); }}
           />
+        )}
+
+        {redefinindoId && (
+          <div className="dialog-overlay" role="dialog" aria-modal="true" aria-label="Redefinir senha">
+            <div className="dialog">
+              <h3>Redefinir senha de {redefinindoNome}</h3>
+              <Field
+                label="Nova senha (mínimo 6 caracteres)"
+                type="password"
+                id="nova-senha"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                required
+                autoComplete="new-password"
+              />
+              {erro !== "" && <p className="dica erro" role="alert">{erro}</p>}
+              <div className="acoes" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <Button variant="ghost" onClick={() => { setRedefinindoId(null); setRedefinindoNome(""); setNovaSenha(""); }}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" onClick={() => void redefinirSenha((usuarios ?? []).find((x) => x.id === redefinindoId)!)} disabled={novaSenha.length < 6}>
+                  Redefinir
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

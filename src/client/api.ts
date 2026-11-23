@@ -60,6 +60,10 @@ export function definirUsuarioAtivo(id: string, ativo: boolean): Promise<Usuario
   return chamar("PATCH", `/api/auth/usuarios/${encodeURIComponent(id)}`, { ativo }) as Promise<UsuarioResumo>;
 }
 
+export function redefinirSenhaUsuario(id: string, senha: string): Promise<UsuarioResumo> {
+  return chamar("PATCH", `/api/auth/usuarios/${encodeURIComponent(id)}`, { senha }) as Promise<UsuarioResumo>;
+}
+
 export function listarCampanhas(): Promise<CampanhaResumo[]> {
   return chamar("GET", "/api/campanhas") as Promise<CampanhaResumo[]>;
 }
