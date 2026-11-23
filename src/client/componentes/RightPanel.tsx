@@ -75,6 +75,13 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
     return bloco.tituloCor === "vermelho" ? "vermelho" : "preto";
   }
 
+  /** Título pronto atualmente aplicado ao bloco selecionado (por texto). */
+  function tituloProntoAtual() {
+    if (!blocoSel || !e.catalogos) return undefined;
+    const texto = textoPuro(carAtual!.blocos[blocoSel.bi]!.titulo);
+    return e.catalogos.titulos.find((t) => t.texto === texto);
+  }
+
   /** Marcadores de cor saem da prévia: o usuário lê texto, não markup. */
   function textoPuro(marcado: string): string {
     return extrairRanges(marcado).plain;
@@ -266,6 +273,30 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                     }
                   }}
                 />
+                {/* TÍTULO PRONTO: seleção do catálogo */}
+                <div className="field">
+                  <label>
+                    Título pronto
+                    <select
+                      id="titulo-pronto-bloco"
+                      value={tituloProntoAtual()?.texto ?? ""}
+                      aria-label="Título pronto do bloco"
+                      onChange={(ev) => {
+                        const p = e.catalogos?.titulos.find((x) => x.texto === ev.target.value);
+                        if (p) {
+                          carAtual!.blocos[blocoSel.bi]!.titulo = p.texto;
+                          carAtual!.blocos[blocoSel.bi]!.tituloCor = p.cor;
+                          marcarSujo();
+                        }
+                      }}
+                    >
+                      <option value="">(sem título pronto)</option>
+                      {e.catalogos.titulos.map((t) => (
+                        <option key={t.texto} value={t.texto}>{t.texto}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
                 <div className="field">
                   <label>
                     Título (texto livre)
@@ -315,11 +346,26 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
             );
           })}
           <div className="bloco-adicionar">
+            <div className="field">
+              <label>
+                Tipo do novo bloco
+                <select
+                  id="tipo-novo-bloco"
+                  aria-label="Tipo do novo bloco"
+                  defaultValue="texto"
+                >
+                  {e.catalogos.tiposBloco.map((t) => (
+                    <option key={t.id} value={t.id}>{t.nome}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <button
               className="btn fantasma bloco"
               type="button"
               onClick={() => {
-                const tipoId = "texto";
+                const select = document.getElementById("tipo-novo-bloco") as HTMLSelectElement | null;
+                const tipoId = select?.value ?? "texto";
                 const tipo = tipoBlocoDe(tipoId);
                 carAtual!.blocos.push(BlocoSchema.parse({
                   id: crypto.randomUUID().slice(0, 8),
