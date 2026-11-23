@@ -24,6 +24,7 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  Trash2,
   Type,
   ChevronDown,
   ChevronRight,
@@ -217,6 +218,16 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                   aria-label={carAtual!.blocos[blocoSel.bi]!.ativo ? "Ocultar bloco" : "Exibir bloco"}
                   onClick={() => {
                     carAtual!.blocos[blocoSel.bi]!.ativo = !carAtual!.blocos[blocoSel.bi]!.ativo;
+                    marcarSujo();
+                  }}
+                />
+                <IconButton
+                  icon={Trash2}
+                  cor="danger"
+                  aria-label="Excluir bloco"
+                  onClick={() => {
+                    carAtual!.blocos.splice(blocoSel.bi, 1);
+                    estado.blocoSelecionado = null;
                     marcarSujo();
                   }}
                 />
