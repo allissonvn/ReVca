@@ -1,4 +1,5 @@
 // Dev: gera um HTML de prévia do seed em temp-preview.html (para conferir a arte).
+// Uso: node dist/scripts/preview.js [caminho-da-campanha.json]
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -15,7 +16,9 @@ const catalogos: Catalogos = {
   titulos: lerJson("data/catalogos/titulos.json").map((t: unknown) => TituloProntoSchema.parse(t)),
   empreendimentos: lerJson("data/catalogos/empreendimentos.json").map((e: unknown) => EmpreendimentoSchema.parse(e)),
 };
-const campanha = CampanhaSchema.parse(lerJson("data/campanhas/exemplo.json"));
+// Permite conferir outra campanha (ex.: tmp/campanha-tabela.json) sem mexer no seed.
+const relCampanha = process.argv[2] ?? "data/campanhas/exemplo.json";
+const campanha = CampanhaSchema.parse(lerJson(relCampanha));
 
 let html = renderDocumento(campanha, catalogos);
 
@@ -34,9 +37,11 @@ for (const [arq, dir] of Object.entries(fontes)) {
 }
 html = html.replace(css, cssLocal);
 
-// Logos e marca d'água por file://
-for (const l of ["logo-vca.png", "watermark.png", "uni-ville.png", "dona-olivia.png", "baron-connect.png", "baron-uchoa.png", "kahakai.png"]) {
-  html = html.replaceAll(`/logos/${l}`, pathToFileURL(join(raiz, "data/logos", l)).href);
+// Logos e marca d'água por file:// (todos os arquivos de data/logos)
+import { readdirSync } from "node:fs";
+for (const l of readdirSync(join(raiz, "data", "logos"))) {
+  const url = pathToFileURL(join(raiz, "data", "logos", l)).href;
+  html = html.replaceAll(`/logos/${l}`, url).replaceAll(`/logos/${encodeURIComponent(l)}`, url);
 }
 
 writeFileSync(join(raiz, "temp-preview.html"), html, "utf8");

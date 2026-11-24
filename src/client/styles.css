@@ -281,3 +281,16 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 }
 .cam-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cam-acoes { display: flex; gap: 6px; padding: 10px 12px; }
+
+/* ---- Editor de tabela (bloco "Tabela de valores") ---- */
+.tabela-editor { display: flex; flex-direction: column; gap: 8px; }
+.tabela-editor-topo { display: flex; align-items: center; gap: 6px; }
+.tabela-editor-rotulo { font-size: 12px; font-weight: 600; color: var(--muted); }
+.tabela-editor-celulas { display: grid; gap: 6px; min-width: 0; }
+.tabela-editor-linha { display: flex; gap: 6px; align-items: flex-start; }
+.tabela-editor-linha.secao { background: var(--surface-2); border-radius: var(--raio-controle); padding: 6px; }
+.tabela-editor-linha.destaque { background: var(--selected); border-radius: var(--raio-controle); padding: 6px; }
+.tabela-editor-linha .tabela-editor-celulas { flex: 1; }
+.tabela-editor-acoes { display: flex; gap: 2px; }
+.tabela-editor-botoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabela-editor .campo-cor { min-width: 0; }

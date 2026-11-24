@@ -45,6 +45,7 @@ export function artCss(): string {
 .titulo-campanha .mes{display:block;font-family:Oswald,Impact,sans-serif;font-weight:300;color:${L.CORES.azul};text-transform:uppercase}
 .logo-vca{position:absolute;right:${L.LOGO_VCA.direita}px;top:${L.LOGO_VCA.topo}px;width:${L.LOGO_VCA.largura}px;height:${L.LOGO_VCA.altura}px}
 .faixa-azul{position:relative;z-index:1;margin:0 ${L.FAIXA.margemDir}px 0 ${L.FAIXA.margemEsq}px;background:${L.CORES.azul};color:#fff;text-align:center;font-family:Oswald,Impact,sans-serif;font-weight:300;font-size:${L.FAIXA.fonte}px;line-height:${L.FAIXA.altura}px;height:${L.FAIXA.altura}px;text-transform:uppercase;white-space:nowrap;overflow:hidden}
+.faixa-azul.verde{background:${L.CORES.verde};border:${L.FAIXA_VERDE.borda}px solid ${L.CORES.bordaFaixaVerde}}
 .faixa-azul.mini{font-size:${L.FAIXA_MINI.fonte}px;line-height:${L.FAIXA_MINI.altura}px;height:${L.FAIXA_MINI.altura}px}
 .pilha{position:relative;z-index:1;display:flex;flex-direction:column;gap:${L.GAP_LINHA_BLOCOS}px}
 .cartao{min-width:0}
@@ -54,9 +55,11 @@ export function artCss(): string {
  * catálogos atuais) ficam uniformes entre cartões */
 .logo-area img{height:100%;width:calc(var(--logo) * 1.5);object-fit:contain}
 .logo-ph{box-sizing:border-box;border:2px dashed #9aa4d8;color:#6a74b8;font-weight:700;font-size:13px;padding:6px 14px;border-radius:6px;height:var(--logo);width:calc(var(--logo) * 1.5);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.caixa{margin:0 auto;width:${L.CARTAO_LARGURA}px}
+.caixa{margin:0 auto;width:var(--largura-cartao,${L.CARTAO_LARGURA}px)}
 .faixa-verde{background:${L.CORES.verde};border:${L.FAIXA_VERDE.borda}px solid ${L.CORES.bordaFaixaVerde};color:#fff;text-align:center;font-size:calc(${L.FAIXA_VERDE.fonte}px * var(--esc));line-height:1.3;font-weight:700;padding:${L.FAIXA_VERDE.padding}px 0;text-transform:uppercase}
 .corpo{background:${L.CORES.cartao};border:${L.CARTAO_CORPO.borda}px solid ${L.CORES.bordaCartao};border-top:0;border-radius:0 0 ${L.CARTAO_CORPO.raio}px ${L.CARTAO_CORPO.raio}px;padding:var(--pad) ${L.CARTAO_CORPO.paddingLateral}px;display:flex;flex-direction:column;align-items:center;gap:var(--gap);min-height:${L.CARTAO_CORPO.minAltura}px}
+/* Modelos de tabela: a tabela fica direto na página, sem a caixa do cartão. */
+.corpo.sem-caixa{background:transparent;border:0;border-radius:0;padding:var(--pad) 0;min-height:0;gap:0}
 .linha-blocos{display:flex;justify-content:space-between;width:100%}
 .linha-blocos.centro{justify-content:center}
 .bloco-col{display:flex;flex-direction:column;align-items:center;gap:${L.GAP_CHIP}px;min-width:0}
@@ -68,6 +71,14 @@ export function artCss(): string {
 .chip-titulo.vermelho{color:${L.CORES.vermelho};font-size:calc(${L.CHIP_TITULO_VERMELHO.fonte}px * var(--esc));padding:${L.CHIP_TITULO_VERMELHO.paddingY}px ${L.CHIP_TITULO_VERMELHO.paddingX}px}
 .cor-azul{color:${L.CORES.azul}}
 .cor-vermelho{color:${L.CORES.vermelho}}
+/* Tabela de valores: largura automática (acompanha o conteúdo, como no PDF),
+   cabeçalho e linhas de seção escuras, dados alternando branco/cinza. */
+.tabela{border-collapse:collapse;table-layout:auto;width:auto;max-width:100%;margin:0 auto}
+.tabela th,.tabela td{border:1px solid #111;padding:9px 12px;text-align:center;vertical-align:middle;font-size:calc(15.5px * var(--esc));line-height:1.25;font-weight:400;color:#111;background:#fff;white-space:normal;overflow-wrap:anywhere}
+.tabela th{background:#3f3f3f;color:#fff;font-weight:700;text-transform:uppercase}
+.tabela tr.secao td{background:#3f3f3f;color:#fff;font-weight:700;text-transform:uppercase}
+.tabela tr.destaque td{background:#3f3f3f;color:#fff;font-weight:700;text-transform:uppercase}
+.tabela tr.dados.par td{background:#d9d9d9}
 .rodape{position:relative;z-index:1;text-align:center;font-size:12px;color:#555;padding:0 34px;margin-top:6px}
 `;
 }
@@ -149,10 +160,14 @@ export function renderPagina(pagina: Pagina, ctx: RenderCtx): string {
   const { campanha, catalogos } = ctx;
   const modelo = modeloPorId(catalogos, pagina.modelo);
   if (!modelo) throw new Error(`Modelo desconhecido: ${pagina.modelo}`);
-  const vars = `--esc:${modelo.escala};--logo:${modelo.alturaLogo}px;--pad:${modelo.paddingCartao}px;--gap:${modelo.espacoBlocos}px`;
-  const faixaPagina = modelo.faixaPorCartao
+  const vars = `--esc:${modelo.escala};--logo:${modelo.alturaLogo}px;--pad:${modelo.paddingCartao}px;--gap:${modelo.espacoBlocos}px;--largura-cartao:${modelo.larguraCartao ?? L.CARTAO_LARGURA}px`;
+  // Faixa da página: agora depende do CONTEÚDO (não do modelo). Assim um modelo
+  // com faixa por cartão também pode ter uma faixa de página (ex.: "1ª ETAPA"
+  // acima da logo e outra por tabela).
+  const textoFaixaPagina = (pagina.faixa ?? "").trim();
+  const faixaPagina = textoFaixaPagina.length === 0
     ? ""
-    : `<div class="faixa-azul">${escapeHtml(pagina.faixa ?? "")}</div>`;
+    : `<div class="faixa-azul${pagina.faixaCor === "verde" ? " verde" : ""}">${escapeHtml(pagina.faixa ?? "")}</div>`;
   const cartoes = pagina.cartoes
     .map((c) => renderCartao(c, modelo, ctx))
     .join("\n");
@@ -163,7 +178,7 @@ export function renderPagina(pagina: Pagina, ctx: RenderCtx): string {
 ${marcaDagua()}
 <header class="cabecalho">
 <div class="aba"></div>
-<div class="titulo-campanha">${escapeHtml(campanha.titulo)}<span class="mes">${escapeHtml(campanha.mes)}</span></div>
+<div class="titulo-campanha">${renderLinha(campanha.titulo)}<span class="mes">${escapeHtml(campanha.mes)}</span></div>
 <img class="logo-vca" src="/logos/logo-vca.png" alt="VCA">
 </header>
 ${faixaPagina}
@@ -192,18 +207,37 @@ ${forma(f.barra2)}
 
 function renderCartao(cartao: Cartao, modelo: Modelo, ctx: RenderCtx): string {
   const emp = empreendimentoPorId(ctx.catalogos, cartao.empreendimentoId);
-  const faixaMini = modelo.faixaPorCartao
-    ? `<div class="faixa-azul mini">${escapeHtml(cartao.faixa ?? "")}</div>`
+  // Faixa do cartão: só nos modelos com faixaPorCartao e quando há texto
+  // (faixa vazia não desenha a barra). Tamanho mini por padrão; os modelos de
+  // tabela usam a faixa grande (faixaMini: false), como no PDF de valores.
+  const faixa = cartao.faixa ?? "";
+  const temFaixa = modelo.faixaPorCartao && faixa.trim().length > 0;
+  const classeMini = modelo.faixaMini === false ? "" : " mini";
+  const classeCorFaixa = cartao.faixaCor === "verde" ? " verde" : "";
+  const faixaHtml = temFaixa
+    ? `<div class="faixa-azul${classeMini}${classeCorFaixa}">${escapeHtml(faixa)}</div>`
     : "";
-  const logo = renderLogo(emp);
-  const linhasFaixaVerde = cartao.titulo.filter((l) => l.trim().length > 0).map(escapeHtml).join("<br>");
+  // A faixa pode ficar acima da logo (variação do PDF de valores) ou abaixo.
+  const faixaAcima = cartao.faixaPosicao === "acima-logo" ? faixaHtml : "";
+  const faixaAbaixo = cartao.faixaPosicao === "acima-logo" ? "" : faixaHtml;
+  const logo = cartao.mostrarLogo === false
+    ? ""
+    : `<div class="logo-area">${renderLogo(emp)}</div>`;
+  const linhasFaixaVerde = cartao.titulo
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const faixaVerde = linhasFaixaVerde.length === 0
+    ? ""
+    : `<h2 class="faixa-verde">${linhasFaixaVerde.map(renderLinha).join("<br>")}</h2>`;
   const blocosHtml = renderBlocos(cartao, modelo, ctx);
+  const classeCorpo = modelo.semCaixa ? "corpo sem-caixa" : "corpo";
   return `<div class="cartao" data-cartao="${escapeHtml(cartao.id)}">
-${faixaMini}
-<div class="logo-area">${logo}</div>
+${faixaAcima}
+${logo}
+${faixaAbaixo}
 <section class="caixa">
-<h2 class="faixa-verde">${linhasFaixaVerde}</h2>
-<div class="corpo">
+${faixaVerde}
+<div class="${classeCorpo}">
 ${blocosHtml}
 </div>
 </section>
@@ -273,6 +307,7 @@ ${cols}
 }
 
 function renderBloco(bloco: BlocoAtivo, ctx: RenderCtx): string {
+  if (bloco.tabela) return renderBlocoTabela(bloco, ctx);
   const tituloChip = bloco.titulo.trim().length > 0
     ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo.trim())}</div>`
     : "";
@@ -290,5 +325,48 @@ function renderBloco(bloco: BlocoAtivo, ctx: RenderCtx): string {
   return `<div class="bloco-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(nomeTipo)}">
 ${tituloChip}
 ${chips}
+</div>`;
+}
+
+/**
+ * Bloco de tabela: cabeçalho escuro + linhas de seção (colspan) + dados
+ * alternando branco/cinza. A largura é automática (acompanha o conteúdo) e
+ * limitada pela largura do cartão; as células aceitam o mesmo markup de cor
+ * dos chips.
+ */
+function renderBlocoTabela(bloco: BlocoAtivo, ctx: RenderCtx): string {
+  const tabela = bloco.tabela;
+  if (!tabela) return "";
+  const colunas = tabela.cabecalho.length;
+  const cabecalho = tabela.cabecalho
+    .map((c) => `<th>${renderLinha(c.trim())}</th>`)
+    .join("");
+  let dados = 0;
+  const linhas = tabela.linhas
+    .map((linha) => {
+      if (linha.secao) {
+        return `<tr class="secao"><td colspan="${colunas}">${renderLinha((linha.celulas[0] ?? "").trim())}</td></tr>`;
+      }
+      // `par` só conta linhas de dados (linhas de seção não entram na conta)
+      const par = dados % 2 === 1;
+      dados += 1;
+      const celulas = linha.celulas.map((c) => `<td>${renderLinha(c.trim())}</td>`).join("");
+      const classe = linha.destaque ? "destaque" : `dados${par ? " par" : ""}`;
+      return `<tr class="${classe}">${celulas}</tr>`;
+    })
+    .join("\n");
+  const tituloChip = bloco.titulo.trim().length > 0
+    ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo.trim())}</div>`
+    : "";
+  const nomeTipo = ctx.catalogos.tiposBloco.find((t) => t.id === bloco.tipo)?.nome ?? bloco.tipo;
+  const larguraPct = bloco.largura === 2 ? "100%" : "50%";
+  return `<div class="bloco-col tabela-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(nomeTipo)}">
+${tituloChip}
+<table class="tabela">
+<thead><tr>${cabecalho}</tr></thead>
+<tbody>
+${linhas}
+</tbody>
+</table>
 </div>`;
 }

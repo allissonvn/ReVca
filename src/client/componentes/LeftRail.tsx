@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import type { DragEvent, JSX } from "react";
 import { renderCampanha } from "../../shared/render.js";
 import { Pagina } from "../../shared/schema.js";
-import { modeloDe } from "../store.js";
+import { modeloDe, tipoBlocoDe } from "../store.js";
 import { estado, useEstado, marcarSujo, notificarConteudo, selecionarPagina } from "../store.js";
+import { novoBloco } from "../blocos.js";
 import { SearchField } from "../ui/SearchField.js";
 import { Button } from "../ui/Button.js";
 import { GripVertical, CopyPlus, Trash2 } from "lucide-react";
@@ -60,6 +61,9 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
     const modelo = modeloDe(modeloId);
     const n = Math.max(modelo?.minCartoes ?? 1, 1);
     const faixa = modelo?.faixaPorCartao ? undefined : "Nova faixa";
+    // Página do modelo de tabela já nasce com um bloco de tabela (senão ficaria
+    // um chip vazio no lugar da tabela).
+    const tipoId = modeloId === "tabela" ? "tabela" : "texto";
     const nova = {
       id: crypto.randomUUID().slice(0, 8),
       modelo: modeloId,
@@ -68,7 +72,7 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
         id: crypto.randomUUID().slice(0, 8),
         empreendimentoId: null,
         titulo: ["Condições para o ..."],
-        blocos: [{ id: crypto.randomUUID().slice(0, 8), tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto", texto: "" }],
+        blocos: [novoBloco(tipoId, tipoBlocoDe(tipoId))],
       })),
     };
     c.paginas.push(nova as Pagina);

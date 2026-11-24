@@ -7,5 +7,6 @@
   { "id": "promocao", "nome": "Promoção", "tituloPadrao": "PROMOÇÃO", "tituloCor": "vermelho", "largura": 2 },
   { "id": "investidor", "nome": "Condição investidor", "tituloPadrao": "CONDIÇÃO INVESTIDOR", "tituloCor": "preto", "largura": 2 },
   { "id": "avista", "nome": "À vista / sem juros", "tituloPadrao": "", "tituloCor": "preto", "largura": 1 },
-  { "id": "texto", "nome": "Texto livre", "tituloPadrao": "", "tituloCor": "preto", "largura": 2 }
+  { "id": "texto", "nome": "Texto livre", "tituloPadrao": "", "tituloCor": "preto", "largura": 2 },
+  { "id": "tabela", "nome": "Tabela de valores", "tituloPadrao": "", "tituloCor": "preto", "largura": 2 }
 ]

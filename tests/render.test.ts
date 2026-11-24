@@ -290,3 +290,100 @@ describe("modeloPorId", () => {
     expect(modeloPorId(catalogos, "x")).toBeUndefined();
   });
 });
+
+describe("renderCampanha — tabela de valores", () => {
+  const catalogos = carregarCatalogos();
+  const campanhaTabela = CampanhaSchema.parse({
+    versao: 1,
+    id: "tabela",
+    usuarioId: "admin",
+    titulo: "VALORES DE [[azul]]AVALIAÇÃO[[/]]",
+    mes: "NOVEMBRO",
+    paginas: [{
+      id: "pag-tab",
+      modelo: "tabela",
+      faixa: "EMPREENDIMENTOS - VITÓRIA DA CONQUISTA",
+      faixaCor: "verde",
+      cartoes: [
+        {
+          id: "car-tab-1",
+          empreendimentoId: "dona-olivia",
+          faixa: "1ª ETAPA",
+          faixaPosicao: "acima-logo",
+          titulo: ["UNI HOUSE LESTE"],
+          blocos: [{
+            id: "tab-1", tipo: "tabela", ativo: true, largura: 2,
+            titulo: "", tituloCor: "preto", texto: "",
+            tabela: {
+              cabecalho: ["TIPO", "PAVIMENTO", "VALOR"],
+              linhas: [
+                { secao: false, celulas: ["2/4 - ((vermelho))SEM((/)) SUÍTE", "TÉRREO", "R$ 244.900,00"] },
+                { secao: true, celulas: ["3/4 - COM SUÍTE"] },
+                { secao: false, celulas: ["BLOCOS 01", "APTO 01", "R$ 318.000,00"] },
+                { secao: false, destaque: true, celulas: ["2/4 - COM SUÍTE", "TÉRREO", "ABAIXO"] },
+              ],
+            },
+          }],
+        },
+        {
+          id: "car-tab-2",
+          empreendimentoId: null,
+          mostrarLogo: false,
+          faixa: "2ª ETAPA",
+          titulo: [""],
+          blocos: [{
+            id: "tab-2", tipo: "tabela", ativo: true, largura: 2,
+            titulo: "", tituloCor: "preto", texto: "",
+            tabela: {
+              cabecalho: ["TIPO", "VALOR"],
+              linhas: [{ secao: false, celulas: ["2/4", "R$ 210.000,00"] }],
+            },
+          }],
+        },
+      ],
+    }],
+    revisao: 1,
+    atualizadoEm: new Date().toISOString(),
+  });
+  const html = renderCampanha(campanhaTabela, catalogos);
+
+  it("renderiza tabela com cabeçalho, dados e linha de seção (colspan)", () => {
+    expect(html).toContain('<table class="tabela">');
+    expect(html).toContain("<th>TIPO</th><th>PAVIMENTO</th><th>VALOR</th>");
+    expect(html).toContain('<tr class="secao"><td colspan="3">3/4 - COM SUÍTE</td></tr>');
+  });
+
+  it("alterna as linhas de dados e mantém o markup de cor na célula", () => {
+    expect(html).toContain('<tr class="dados">');
+    expect(html).toContain('<tr class="dados par">');
+    expect(html).toContain('<span class="cor-vermelho">SEM</span>');
+  });
+
+  it("linha de destaque mantém as células e recebe a classe própria", () => {
+    expect(html).toContain('<tr class="destaque"><td>2/4 - COM SUÍTE</td><td>TÉRREO</td><td>ABAIXO</td></tr>');
+  });
+
+  it("modelo semCaixa tira a caixa do cartão", () => {
+    expect(html).toContain('class="corpo sem-caixa"');
+  });
+
+  it("faixa da página pode ser verde", () => {
+    expect(html).toContain('<div class="faixa-azul verde">EMPREENDIMENTOS - VITÓRIA DA CONQUISTA</div>');
+  });
+
+  it("faixa do cartão acima da logo e logo oculta quando mostrarLogo = false", () => {
+    const iFaixa = html.indexOf("1ª ETAPA");
+    const iLogo = html.indexOf('class="logo-area"');
+    expect(iFaixa).toBeGreaterThan(-1);
+    expect(iFaixa).toBeLessThan(iLogo);
+    expect((html.match(/class="logo-area"/g) ?? []).length).toBe(1);
+  });
+
+  it("título da campanha aceita markup de cor", () => {
+    expect(html).toContain('VALORES DE <span class="cor-azul">AVALIAÇÃO</span>');
+  });
+
+  it("campanha antiga continua sem tabela", () => {
+    expect(renderCampanha(campanhaSeed, catalogos)).not.toContain("<table");
+  });
+});

@@ -14,6 +14,7 @@ import { PDFDocument } from "pdf-lib";
 import { Campanha, Catalogos } from "../shared/schema.js";
 import { PAGINA_LARGURA, PAGINA_ALTURA } from "../shared/layout.js";
 import { renderDocumento } from "../shared/render.js";
+import { removerMarcadores } from "../shared/markup.js";
 import { NaoEncontradoError } from "./storage.js";
 
 export type OpcoesExport = {
@@ -138,7 +139,9 @@ export function criarExportador(opcoes: OpcoesExportador = {}): Exportador {
 
 /** Nome do arquivo sanitizado: <titulo>-<mes>.<ext> (AGENTS.md §8). */
 export function nomeArquivo(campanha: Campanha, extensao: string): string {
-  const bruto = `${campanha.titulo}-${campanha.mes}`;
+  // O título pode ter markup de cor ([[azul]] / ((vermelho))): o nome do
+  // arquivo usa só o texto visível.
+  const bruto = `${removerMarcadores(campanha.titulo)}-${campanha.mes}`;
   const limpo = bruto
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // remove acentos

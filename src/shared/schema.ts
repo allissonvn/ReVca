@@ -16,25 +16,78 @@ export type TituloCor = z.infer<typeof TituloCorSchema>;
 export const LarguraSchema = z.union([z.literal(1), z.literal(2)]);
 export type Largura = z.infer<typeof LarguraSchema>;
 
-export const BlocoSchema = z.object({
-  id: z.string().min(1),
-  tipo: z.string().min(1),
-  ativo: z.boolean(),
-  largura: LarguraSchema,
-  // Título aceita markup de cor ([[azul]] / ((vermelho)))
-  titulo: z.string(),
-  tituloCor: TituloCorSchema,
-  // Uma linha = um chip; aceita markup de cor
-  texto: z.string(),
+export const FaixaCorSchema = z.enum(["azul", "verde"]);
+export type FaixaCor = z.infer<typeof FaixaCorSchema>;
+
+// ---- Tabela (bloco estruturado de valores) ----
+// Linha de seção ocupa a tabela inteira (colspan) e tem 1 célula;
+// linha de dados tem o mesmo número de células do cabeçalho.
+// `destaque` pinta a linha de dados como faixa escura (ex.: "2/4 - COM SUÍTE").
+
+export const TabelaLinhaSchema = z.object({
+  secao: z.boolean(),
+  celulas: z.array(z.string()).min(1).max(6),
+  destaque: z.boolean().optional(),
 });
+export type TabelaLinha = z.infer<typeof TabelaLinhaSchema>;
+
+export const TabelaSchema = z.object({
+  cabecalho: z.array(z.string()).min(1).max(6),
+  linhas: z.array(TabelaLinhaSchema),
+});
+export type Tabela = z.infer<typeof TabelaSchema>;
+
+export const BlocoSchema = z
+  .object({
+    id: z.string().min(1),
+    tipo: z.string().min(1),
+    ativo: z.boolean(),
+    largura: LarguraSchema,
+    // Título aceita markup de cor ([[azul]] / ((vermelho)))
+    titulo: z.string(),
+    tituloCor: TituloCorSchema,
+    // Uma linha = um chip; aceita markup de cor
+    texto: z.string(),
+    // Quando presente, o bloco é uma tabela e `texto` não é usado.
+    tabela: TabelaSchema.optional(),
+  })
+  .superRefine((bloco, ctx) => {
+    if (!bloco.tabela) return;
+    const colunas = bloco.tabela.cabecalho.length;
+    bloco.tabela.linhas.forEach((linha, i) => {
+      if (linha.secao && linha.destaque) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tabela", "linhas", i],
+          message: "Linha de seção não pode ser de destaque",
+        });
+        return;
+      }
+      const esperado = linha.secao ? 1 : colunas;
+      if (linha.celulas.length !== esperado) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tabela", "linhas", i, "celulas"],
+          message: linha.secao
+            ? "Linha de seção deve ter 1 célula"
+            : `Linha de dados deve ter ${colunas} células`,
+        });
+      }
+    });
+  });
 export type Bloco = z.infer<typeof BlocoSchema>;
 
 export const CartaoSchema = z.object({
   id: z.string().min(1),
   empreendimentoId: z.string().nullable(),
-  // Faixa azul do cartão (só nos modelos com faixaPorCartao)
+  // Faixa do cartão (azul ou verde) e onde ela fica em relação à logo.
+  // Só aparece quando `faixa` tem texto.
   faixa: z.string().optional(),
-  // Faixa verde: 1 ou 2 linhas
+  faixaCor: FaixaCorSchema.optional(),
+  faixaPosicao: z.enum(["acima-logo", "abaixo-logo"]).optional(),
+  // false esconde a logo (páginas com várias tabelas mostram a logo uma vez)
+  mostrarLogo: z.boolean().optional(),
+  // Faixa verde: 1 ou 2 linhas; vazio = sem faixa
   titulo: z.array(z.string()).min(1).max(2),
   blocos: z.array(BlocoSchema),
 });
@@ -43,8 +96,9 @@ export type Cartao = z.infer<typeof CartaoSchema>;
 export const PaginaSchema = z.object({
   id: z.string().min(1),
   modelo: z.string().min(1),
-  // Faixa azul da página (nos modelos com faixaPorCartao não é usada)
+  // Faixa da página (azul ou verde); vazio = sem faixa
   faixa: z.string().optional(),
+  faixaCor: FaixaCorSchema.optional(),
   cartoes: z.array(CartaoSchema),
 });
 export type Pagina = z.infer<typeof PaginaSchema>;
@@ -79,6 +133,13 @@ export const ModeloSchema = z.object({
   espacoBlocos: z.number(),
   // Onde fica um bloco de largura 1 que sobra sozinho na linha
   celulaSolitaria: z.enum(["esquerda", "centro"]).default("esquerda"),
+  // Modelos de tabela: sem a caixa cinza/borda azul do cartão
+  semCaixa: z.boolean().optional(),
+  // Largura do cartão em px (padrão 738); tabelas largas usam ~830
+  larguraCartao: z.number().positive().optional(),
+  // Faixa do cartão em tamanho reduzido (padrão true). Os modelos de tabela
+  // usam a faixa grande, como no PDF de valores.
+  faixaMini: z.boolean().optional(),
 });
 export type Modelo = z.infer<typeof ModeloSchema>;
 

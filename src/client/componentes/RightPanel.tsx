@@ -9,15 +9,17 @@
 //    default.
 import type { JSX } from "react";
 import { useState } from "react";
-import { BlocoSchema } from "../../shared/schema.js";
+import { Cartao, CartaoSchema } from "../../shared/schema.js";
 import { extrairRanges } from "../../shared/markup.js";
 import { empreendimentoDe, modeloDe, tipoBlocoDe, estado, useEstado, marcarSujo, selecionarBloco } from "../store.js";
+import { novoBloco } from "../blocos.js";
 import { Section } from "../ui/Card.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
 import { Segmented } from "../ui/Segmented.js";
 import { Chip } from "../ui/Chip.js";
 import { CampoCor } from "./CampoCor.js";
+import { TabelaEditor } from "./TabelaEditor.js";
 import { Field } from "../ui/Field.js";
 import {
   Shield,
@@ -30,6 +32,7 @@ import {
   ChevronRight,
   GripVertical,
   Layers,
+  FileText,
 } from "lucide-react";
 
 type BlocoSel = { ci: number; bi: number };
@@ -60,6 +63,8 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
   const car = pag.cartoes[cartaoIndex];
   if (!car) return <aside className="right-panel" />;
   const carAtual = car;
+  // Bloco de tabela tem editor próprio (sem textarea/largura/título de chip).
+  const ehTabela = blocoSel ? carAtual.blocos[blocoSel.bi]?.tabela !== undefined : false;
 
   function pintarBloco(cor: "preto" | "vermelho"): void {
     if (!blocoSel) return;
@@ -117,6 +122,53 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
         )}
       </Section>
 
+      {/* ---- Seção Página ---- */}
+      <Section titulo={`Página ${e.pagSelecionada + 1}`} icon={FileText}>
+        <div className="secao-conteudo">
+          <Field
+            id="modelo-pagina"
+            label="Modelo"
+            select
+            value={pag.modelo}
+            opcoes={e.catalogos.modelos.map((m) => ({ valor: m.id, rotulo: m.nome }))}
+            onChange={(ev) => {
+              const novo = modeloDe(ev.target.value);
+              if (!novo) return;
+              pag.modelo = novo.id;
+              // respeita min/max do modelo escolhido
+              while (pag.cartoes.length > novo.maxCartoes) pag.cartoes.pop();
+              while (pag.cartoes.length < novo.minCartoes) pag.cartoes.push(cartaoEmBranco());
+              marcarSujo();
+            }}
+          />
+          <Field
+            id="faixa-pagina"
+            label="Faixa da página"
+            value={pag.faixa ?? ""}
+            placeholder="Ex.: EMPREENDIMENTOS - VITÓRIA DA CONQUISTA"
+            onChange={(ev) => {
+              if (ev.target.value) pag.faixa = ev.target.value;
+              else delete pag.faixa;
+              marcarSujo();
+            }}
+          />
+          <Field
+            id="faixa-cor-pagina"
+            label="Cor da faixa da página"
+            select
+            value={pag.faixaCor ?? "azul"}
+            opcoes={[
+              { valor: "azul", rotulo: "Azul" },
+              { valor: "verde", rotulo: "Verde" },
+            ]}
+            onChange={(ev) => {
+              pag.faixaCor = ev.target.value === "verde" ? "verde" : "azul";
+              marcarSujo();
+            }}
+          />
+        </div>
+      </Section>
+
       {/* ---- Seção Cartão ---- */}
       <Section titulo={`Cartão ${cartaoIndex + 1}`} icon={Shield}>
         <div className="secao-conteudo">
@@ -144,13 +196,62 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
             }}
           />
 
-          {faixaPorCartao && (
-            <Field
-              id={`faixa-azul-cartao-${cartaoIndex}`}
-              label="Faixa azul do cartão"
-              value={carAtual!.faixa ?? ""}
-              onChange={(ev) => { carAtual!.faixa = ev.target.value; marcarSujo(); }}
+          <label className="inline">
+            <input
+              type="checkbox"
+              checked={carAtual!.mostrarLogo !== false}
+              aria-label="Mostrar logo do cartão"
+              onChange={(ev) => { carAtual!.mostrarLogo = ev.target.checked; marcarSujo(); }}
             />
+            Mostrar logo
+          </label>
+
+          {faixaPorCartao && (
+            <>
+              <Field
+                id={`faixa-cartao-${cartaoIndex}`}
+                label="Faixa do cartão"
+                value={carAtual!.faixa ?? ""}
+                placeholder="Ex.: 1ª ETAPA"
+                onChange={(ev) => {
+                  if (ev.target.value) carAtual!.faixa = ev.target.value;
+                  else delete carAtual!.faixa;
+                  marcarSujo();
+                }}
+              />
+              {(carAtual!.faixa ?? "").trim() !== "" && (
+                <>
+                  <Field
+                    id={`faixa-cor-cartao-${cartaoIndex}`}
+                    label="Cor da faixa"
+                    select
+                    value={carAtual!.faixaCor ?? "azul"}
+                    opcoes={[
+                      { valor: "azul", rotulo: "Azul" },
+                      { valor: "verde", rotulo: "Verde" },
+                    ]}
+                    onChange={(ev) => {
+                      carAtual!.faixaCor = ev.target.value === "verde" ? "verde" : "azul";
+                      marcarSujo();
+                    }}
+                  />
+                  <Field
+                    id={`faixa-posicao-cartao-${cartaoIndex}`}
+                    label="Posição da faixa"
+                    select
+                    value={carAtual!.faixaPosicao ?? "abaixo-logo"}
+                    opcoes={[
+                      { valor: "abaixo-logo", rotulo: "Abaixo da logo" },
+                      { valor: "acima-logo", rotulo: "Acima da logo" },
+                    ]}
+                    onChange={(ev) => {
+                      carAtual!.faixaPosicao = ev.target.value === "acima-logo" ? "acima-logo" : "abaixo-logo";
+                      marcarSujo();
+                    }}
+                  />
+                </>
+              )}
+            </>
           )}
 
           {/* Faixa verde: duas entradas full-width */}
@@ -193,25 +294,29 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
               </Chip>
               <div className="bloco-cor-toolbar">
                 {/* cor do TÍTULO: só existem preto/vermelho (mesmas opções do
-                    select "Cor do título" abaixo) */}
-                <button
-                  className={`btn fantasma ${corTituloAtual() === "preto" ? "ativo" : ""}`}
-                  type="button"
-                  title="Título preto"
-                  onClick={() => pintarBloco("preto")}
-                  aria-label="Título preto"
-                >
-                  Preto
-                </button>
-                <button
-                  className={`btn fantasma ${corTituloAtual() === "vermelho" ? "ativo" : ""}`}
-                  type="button"
-                  title="Título vermelho"
-                  onClick={() => pintarBloco("vermelho")}
-                  aria-label="Título vermelho"
-                >
-                  Vermelho
-                </button>
+                    select "Cor do título" abaixo). Tabela não tem título de chip. */}
+                {!ehTabela && (
+                  <>
+                    <button
+                      className={`btn fantasma ${corTituloAtual() === "preto" ? "ativo" : ""}`}
+                      type="button"
+                      title="Título preto"
+                      onClick={() => pintarBloco("preto")}
+                      aria-label="Título preto"
+                    >
+                      Preto
+                    </button>
+                    <button
+                      className={`btn fantasma ${corTituloAtual() === "vermelho" ? "ativo" : ""}`}
+                      type="button"
+                      title="Título vermelho"
+                      onClick={() => pintarBloco("vermelho")}
+                      aria-label="Título vermelho"
+                    >
+                      Vermelho
+                    </button>
+                  </>
+                )}
                 <IconButton
                   icon={carAtual!.blocos[blocoSel.bi]!.ativo ? EyeOff : Eye}
                   cor="muted"
@@ -234,6 +339,10 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
               </div>
             </div>
 
+            {ehTabela ? (
+              <TabelaEditor bloco={carAtual!.blocos[blocoSel.bi]!} />
+            ) : (
+              <>
             <div className="field">
               <label>
                 Texto (uma linha = um chip)
@@ -320,6 +429,8 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
         </Section>
       )}
@@ -330,7 +441,9 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
           {carAtual!.blocos.map((b, bi) => {
             if (blocoSel && blocoSel.ci === cartaoIndex && blocoSel.bi === bi) return null;
             const tipo = tipoBlocoDe(b.tipo);
-            const primeiraLinha = textoPuro(b.texto).split("\n")[0] || "";
+            const resumo = b.tabela
+              ? b.tabela.cabecalho.join(" · ")
+              : textoPuro(b.texto).split("\n")[0] || "";
             return (
               <div
                 key={b.id}
@@ -342,7 +455,7 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                 </div>
                 <div className="bloco-linha-info">
                   <div className="bloco-linha-nome">{tipo?.nome ?? b.tipo}</div>
-                  <div className="bloco-linha-texto">{primeiraLinha}</div>
+                  <div className="bloco-linha-texto">{resumo}</div>
                 </div>
                 <IconButton
                   icon={b.ativo ? Eye : EyeOff}
@@ -377,16 +490,7 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
               onClick={() => {
                 const select = document.getElementById("tipo-novo-bloco") as HTMLSelectElement | null;
                 const tipoId = select?.value ?? "texto";
-                const tipo = tipoBlocoDe(tipoId);
-                carAtual!.blocos.push(BlocoSchema.parse({
-                  id: crypto.randomUUID().slice(0, 8),
-                  tipo: tipoId,
-                  ativo: true,
-                  largura: tipo?.largura ?? 2,
-                  titulo: tipo?.tituloPadrao ?? "",
-                  tituloCor: tipo?.tituloCor ?? "preto",
-                  texto: "",
-                }));
+                carAtual!.blocos.push(novoBloco(tipoId, tipoBlocoDe(tipoId)));
                 marcarSujo();
               }}
             >
@@ -397,4 +501,14 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
       </Section>
     </aside>
   );
+}
+
+/** Cartão em branco ao trocar para um modelo com mais cartões. */
+function cartaoEmBranco(): Cartao {
+  return CartaoSchema.parse({
+    id: crypto.randomUUID().slice(0, 8),
+    empreendimentoId: null,
+    titulo: ["Condições para o ..."],
+    blocos: [{ id: crypto.randomUUID().slice(0, 8), tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto", texto: "" }],
+  });
 }

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 import { criarApp } from "../src/server/index.js";
 import { criarStorage } from "../src/server/storage.js";
+import { nomeArquivo } from "../src/server/export.js";
 import type { Server } from "node:http";
 import { campanhaSeed } from "./helpers/fixtures.js";
 
@@ -165,5 +166,12 @@ describe("exportação", () => {
     expect(r.status).toBe(200);
     const pdf = Buffer.from(await r.arrayBuffer());
     expect(contarPaginasPdf(pdf)).toBe(1);
+  });
+});
+
+describe("nomeArquivo", () => {
+  it("ignora o markup de cor do título", () => {
+    const c = { ...campanhaSeed(), titulo: "VALORES DE [[azul]]AVALIAÇÃO[[/]]", mes: "NOVEMBRO" as const };
+    expect(nomeArquivo(c, "pdf")).toBe("valores-de-avaliacao-novembro.pdf");
   });
 });

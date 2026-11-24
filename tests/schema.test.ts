@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  CampanhaSchema, ModeloSchema, TipoBlocoSchema, TituloProntoSchema, EmpreendimentoSchema,
+  BlocoSchema, CampanhaSchema, ModeloSchema, TipoBlocoSchema, TituloProntoSchema, EmpreendimentoSchema,
 } from "../src/shared/schema.js";
 import { campanhaSeed } from "./helpers/fixtures.js";
 
@@ -98,6 +98,63 @@ describe("CampanhaSchema", () => {
     const c = campanhaValida();
     (c as any).rodape = "Validade: 30/11";
     expect(() => CampanhaSchema.parse(c)).not.toThrow();
+  });
+});
+
+describe("BlocoSchema — tabela", () => {
+  const bloco = (tabela: unknown) => ({
+    id: "b1", tipo: "tabela", ativo: true, largura: 2,
+    titulo: "", tituloCor: "preto", texto: "", tabela,
+  });
+
+  it("aceita cabeçalho, linha de dados e linha de seção", () => {
+    const t = {
+      cabecalho: ["TIPO", "PAVIMENTO", "VALOR"],
+      linhas: [
+        { secao: false, celulas: ["2/4", "TÉRREO", "R$ 244.900,00"] },
+        { secao: true, celulas: ["3/4 - COM SUÍTE"] },
+      ],
+    };
+    expect(BlocoSchema.safeParse(bloco(t)).success).toBe(true);
+  });
+
+  it("rejeita linha de dados com número de células diferente do cabeçalho", () => {
+    const t = {
+      cabecalho: ["TIPO", "VALOR"],
+      linhas: [{ secao: false, celulas: ["2/4", "R$ 1", "sobra"] }],
+    };
+    expect(BlocoSchema.safeParse(bloco(t)).success).toBe(false);
+  });
+
+  it("rejeita linha de seção com mais de uma célula", () => {
+    const t = {
+      cabecalho: ["TIPO", "VALOR"],
+      linhas: [{ secao: true, celulas: ["3/4", "TÉRREO"] }],
+    };
+    expect(BlocoSchema.safeParse(bloco(t)).success).toBe(false);
+  });
+
+  it("aceita linha de destaque com as células da tabela", () => {
+    const t = {
+      cabecalho: ["TIPO", "PAVIMENTO", "VALOR"],
+      linhas: [{ secao: false, destaque: true, celulas: ["2/4 - COM SUÍTE", "TÉRREO", "ABAIXO"] }],
+    };
+    expect(BlocoSchema.safeParse(bloco(t)).success).toBe(true);
+  });
+
+  it("rejeita linha de seção marcada também como destaque", () => {
+    const t = {
+      cabecalho: ["TIPO", "VALOR"],
+      linhas: [{ secao: true, destaque: true, celulas: ["3/4"] }],
+    };
+    expect(BlocoSchema.safeParse(bloco(t)).success).toBe(false);
+  });
+
+  it("aceita bloco comum sem tabela (campanhas antigas)", () => {
+    expect(BlocoSchema.safeParse({
+      id: "b2", tipo: "texto", ativo: true, largura: 2,
+      titulo: "", tituloCor: "preto", texto: "linha",
+    }).success).toBe(true);
   });
 });
 
