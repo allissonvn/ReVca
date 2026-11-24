@@ -1,8 +1,8 @@
-// Editor da tabela de valores (bloco com `tabela`).
+// Editor da tabela de valores (entidade Tabela separada, não bloco).
 // Cabeçalho + linhas de dados + linhas de seção (ocupam a tabela toda).
 // As células usam CampoCor: o mesmo markup de cor dos chips.
 import type { CSSProperties, JSX } from "react";
-import { Bloco, Tabela } from "../../shared/schema.js";
+import { Tabela } from "../../shared/schema.js";
 import { marcarSujo } from "../store.js";
 import { CampoCor } from "./CampoCor.js";
 import { IconButton } from "../ui/IconButton.js";
@@ -11,9 +11,8 @@ import { Bold, Minus, Plus, Rows3, Trash2 } from "lucide-react";
 const MIN_COLUNAS = 2;
 const MAX_COLUNAS = 5;
 
-export function TabelaEditor({ bloco }: { bloco: Bloco }): JSX.Element | null {
-  if (!bloco.tabela) return null;
-  const t: Tabela = bloco.tabela;
+export function TabelaEditor({ tabela }: { tabela: Tabela }): JSX.Element {
+  const t = tabela.tabela;
   const colunas = t.cabecalho.length;
 
   function mudarColunas(delta: number): void {
@@ -32,6 +31,33 @@ export function TabelaEditor({ bloco }: { bloco: Bloco }): JSX.Element | null {
 
   return (
     <div className="tabela-editor">
+      {/* Título da tabela (com cor) */}
+      <div className="tabela-editor-titulo">
+        <CampoCor
+          marcado={tabela.titulo}
+          aria="Título da tabela"
+          aoMudar={(m) => { tabela.titulo = m; marcarSujo(); }}
+          placeholder="Título da tabela (opcional)"
+        />
+        <select
+          value={tabela.tituloCor}
+          onChange={(e) => { tabela.tituloCor = e.target.value as "preto" | "vermelho"; marcarSujo(); }}
+          aria-label="Cor do título"
+          style={{ width: "auto", marginLeft: 8 }}
+        >
+          <option value="preto">Preto</option>
+          <option value="vermelho">Vermelho</option>
+        </select>
+        <label style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 8 }}>
+          <input
+            type="checkbox"
+            checked={tabela.ativo}
+            onChange={(e) => { tabela.ativo = e.target.checked; marcarSujo(); }}
+          />
+          Ativo
+        </label>
+      </div>
+
       <div className="tabela-editor-topo">
         <span className="tabela-editor-rotulo">Colunas: {colunas}</span>
         <IconButton
@@ -115,8 +141,13 @@ function grade(colunas: number): CSSProperties {
   return { gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` };
 }
 
+interface TabelaEstrutura {
+  cabecalho: string[];
+  linhas: Array<{ secao: boolean; celulas: string[]; destaque?: boolean }>;
+}
+
 /** Ajusta o número de colunas mantendo as células existentes. */
-function ajustarColunas(t: Tabela, alvo: number): void {
+function ajustarColunas(t: TabelaEstrutura, alvo: number): void {
   while (t.cabecalho.length < alvo) t.cabecalho.push("");
   while (t.cabecalho.length > alvo) t.cabecalho.pop();
   for (const linha of t.linhas) {
@@ -127,7 +158,7 @@ function ajustarColunas(t: Tabela, alvo: number): void {
 }
 
 /** Converte entre linha de dados e linha de seção sem perder o texto digitado. */
-function alternarSecao(t: Tabela, li: number): void {
+function alternarSecao(t: TabelaEstrutura, li: number): void {
   const linha = t.linhas[li];
   if (!linha) return;
   if (linha.secao) {
@@ -135,7 +166,7 @@ function alternarSecao(t: Tabela, li: number): void {
     linha.secao = false;
     linha.celulas = [primeiro, ...Array.from({ length: Math.max(0, t.cabecalho.length - 1) }, () => "")];
   } else {
-    const texto = linha.celulas.map((c) => c.trim()).filter(Boolean).join(" · ");
+    const texto = linha.celulas.map((c: string) => c.trim()).filter(Boolean).join(" · ");
     linha.secao = true;
     linha.celulas = [texto];
     delete linha.destaque; // seção e destaque são exclusivos (schema)

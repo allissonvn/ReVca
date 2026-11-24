@@ -135,7 +135,10 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   // id do bloco selecionado (para a regra de outline via <style> do React).
   const sel = estado.blocoSelecionado;
   const paginaSel = campanha.paginas[estado.pagSelecionada];
-  const blocoSelId = sel && paginaSel ? paginaSel.cartoes[sel.ci]?.blocos[sel.bi]?.id : undefined;
+  let blocoSelId: string | undefined;
+  if (sel && sel.tipo === "bloco" && paginaSel) {
+    blocoSelId = paginaSel.cartoes[sel.ci]?.blocos[sel.bi]?.id;
+  }
   const cabeNaPagina = paginaSel ? !estouros.has(paginaSel.id) : true;
 
   /** Seleciona o primeiro bloco do cartão que estourou. */

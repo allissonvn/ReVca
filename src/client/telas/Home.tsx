@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { artCssEscopo, renderCampanha } from "../../shared/render.js";
+import { renderLinha } from "../../shared/markup.js";
 import { Campanha, Catalogos } from "../../shared/schema.js";
 import {
   CampanhaResumo,
@@ -307,7 +308,7 @@ function CartaoCampanha({
           <Calendar size={14} strokeWidth={2} aria-hidden="true" />
           <span className="badge-mes">{r.mes} · {r.nPaginas} pág.</span>
         </div>
-        <h3 className="cam-titulo">{r.titulo}</h3>
+        <h3 className="cam-titulo" dangerouslySetInnerHTML={{ __html: renderLinha(r.titulo) }} />
         <p className="dica">Editado em {data}</p>
       </div>
       <div className="cam-acoes" onClick={(e) => e.stopPropagation()}>

@@ -15,8 +15,9 @@ export type Estado = {
   // página selecionada na prévia (índice) e se mostra todas
   pagSelecionada: number;
   verTodas: boolean;
-  // bloco selecionado no painel direito (ci, bi)
-  blocoSelecionado: { ci: number; bi: number } | null;
+  // bloco/tabela selecionado no painel direito
+  // tipo "bloco" = bloco normal; tipo "tabela" = tabela separada
+  blocoSelecionado: { ci: number; bi: number; tipo: "bloco" } | { ci: number; ti: number; tipo: "tabela" } | null;
   // zoom do canvas (0.25–2.0) e se está em "ajustar à tela"
   zoom: number;
   zoomAjustado: boolean;
@@ -223,11 +224,17 @@ export function selecionarPagina(i: number): void {
 
 /** Seleciona um bloco para edição no painel direito. */
 export function selecionarBloco(ci: number, bi: number): void {
-  estado.blocoSelecionado = { ci, bi };
+  estado.blocoSelecionado = { ci, bi, tipo: "bloco" };
   notifier();
 }
 
-/** Limpa a seleção de bloco. */
+/** Seleciona uma tabela para edição no painel direito. */
+export function selecionarTabela(ci: number, ti: number): void {
+  estado.blocoSelecionado = { ci, ti, tipo: "tabela" };
+  notifier();
+}
+
+/** Limpa a seleção de bloco/tabela. */
 export function limparSelecaoBloco(): void {
   estado.blocoSelecionado = null;
   notifier();

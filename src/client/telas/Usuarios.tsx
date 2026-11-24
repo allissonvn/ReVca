@@ -35,8 +35,7 @@ export function Usuarios(): JSX.Element {
   const [aviso, setAviso] = useState("");
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [excluindoNome, setExcluindoNome] = useState("");
-  const [redefinindoId, setRedefinindoId] = useState<string | null>(null);
-  const [redefinindoNome, setRedefinindoNome] = useState("");
+  const [redefinindo, setRedefinindo] = useState<UsuarioResumo | null>(null);
   const [novaSenha, setNovaSenha] = useState("");
 
   // Estado local do formulário (declarado antes de qualquer uso)
@@ -78,10 +77,8 @@ export function Usuarios(): JSX.Element {
     }
     try {
       await redefinirSenhaUsuario(u.id, novaSenha);
-      setUsuarios((atual) => (atual ?? []).map((x) => (x.id === u.id ? { ...x } : x)));
       setAviso(`Senha de ${u.nome} redefinida com sucesso.`);
-      setRedefinindoId(null);
-      setRedefinindoNome("");
+      setRedefinindo(null);
       setNovaSenha("");
       notifier();
     } catch (e) {
@@ -199,8 +196,7 @@ export function Usuarios(): JSX.Element {
                             icon="KeyRound"
                             title="Redefinir senha deste usuário"
                             onClick={() => {
-                              setRedefinindoId(u.id);
-                              setRedefinindoNome(u.nome);
+                              setRedefinindo(u);
                               setNovaSenha("");
                             }}
                           />
@@ -318,10 +314,10 @@ export function Usuarios(): JSX.Element {
           />
         )}
 
-        {redefinindoId && (
+        {redefinindo && (
           <div className="dialog-overlay" role="dialog" aria-modal="true" aria-label="Redefinir senha">
             <div className="dialog">
-              <h3>Redefinir senha de {redefinindoNome}</h3>
+              <h3>Redefinir senha de {redefinindo.nome}</h3>
               <Field
                 label="Nova senha (mínimo 6 caracteres)"
                 type="password"
@@ -333,10 +329,10 @@ export function Usuarios(): JSX.Element {
               />
               {erro !== "" && <p className="dica erro" role="alert">{erro}</p>}
               <div className="acoes" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <Button variant="ghost" onClick={() => { setRedefinindoId(null); setRedefinindoNome(""); setNovaSenha(""); }}>
+                <Button variant="ghost" onClick={() => { setRedefinindo(null); setNovaSenha(""); }}>
                   Cancelar
                 </Button>
-                <Button variant="primary" onClick={() => void redefinirSenha((usuarios ?? []).find((x) => x.id === redefinindoId)!)} disabled={novaSenha.length < 6}>
+                <Button variant="primary" onClick={() => void redefinirSenha(redefinindo)} disabled={novaSenha.length < 6}>
                   Redefinir
                 </Button>
               </div>

@@ -2,7 +2,7 @@
 // Gera HTML como string. Nada de framework, px fixos, todo texto do usuário escapado.
 import { renderLinha, escapeHtml } from "./markup.js";
 import {
-  Bloco, Campanha, Catalogos, Cartao, Empreendimento, Modelo, Pagina,
+  Bloco, Campanha, Catalogos, Cartao, Empreendimento, Modelo, Pagina, Tabela,
 } from "./schema.js";
 import * as L from "./layout.js";
 
@@ -230,6 +230,7 @@ function renderCartao(cartao: Cartao, modelo: Modelo, ctx: RenderCtx): string {
     ? ""
     : `<h2 class="faixa-verde">${linhasFaixaVerde.map(renderLinha).join("<br>")}</h2>`;
   const blocosHtml = renderBlocos(cartao, modelo, ctx);
+  const tabelasHtml = renderTabelas(cartao, modelo, ctx);
   const classeCorpo = modelo.semCaixa ? "corpo sem-caixa" : "corpo";
   return `<div class="cartao" data-cartao="${escapeHtml(cartao.id)}">
 ${faixaAcima}
@@ -239,6 +240,7 @@ ${faixaAbaixo}
 ${faixaVerde}
 <div class="${classeCorpo}">
 ${blocosHtml}
+${tabelasHtml}
 </div>
 </section>
 </div>`;
@@ -306,6 +308,15 @@ ${cols}
     .join("\n");
 }
 
+function renderTabelas(cartao: Cartao, modelo: Modelo, ctx: RenderCtx): string {
+  const tabelas = cartao.tabelas ?? [];
+  if (tabelas.length === 0) return "";
+  return tabelas
+    .filter((t) => t.ativo)
+    .map((t) => renderTabela(t, ctx))
+    .join("\n");
+}
+
 function renderBloco(bloco: BlocoAtivo, ctx: RenderCtx): string {
   if (bloco.tabela) return renderBlocoTabela(bloco, ctx);
   const tituloChip = bloco.titulo.trim().length > 0
@@ -361,6 +372,44 @@ function renderBlocoTabela(bloco: BlocoAtivo, ctx: RenderCtx): string {
   const nomeTipo = ctx.catalogos.tiposBloco.find((t) => t.id === bloco.tipo)?.nome ?? bloco.tipo;
   const larguraPct = bloco.largura === 2 ? "100%" : "50%";
   return `<div class="bloco-col tabela-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(nomeTipo)}">
+${tituloChip}
+<table class="tabela">
+<thead><tr>${cabecalho}</tr></thead>
+<tbody>
+${linhas}
+</tbody>
+</table>
+</div>`;
+}
+
+/**
+ * Renderiza uma Tabela (entidade separada, não é bloco).
+ * Semelhante a renderBlocoTabela, mas com seus próprios atributos (id, largura, tituloCor).
+ */
+function renderTabela(tabela: Tabela, ctx: RenderCtx): string {
+  const t = tabela.tabela;
+  const colunas = t.cabecalho.length;
+  const cabecalho = t.cabecalho
+    .map((c) => `<th>${renderLinha(c.trim())}</th>`)
+    .join("");
+  let dados = 0;
+  const linhas = t.linhas
+    .map((linha) => {
+      if (linha.secao) {
+        return `<tr class="secao"><td colspan="${colunas}">${renderLinha((linha.celulas[0] ?? "").trim())}</td></tr>`;
+      }
+      const par = dados % 2 === 1;
+      dados += 1;
+      const celulas = linha.celulas.map((c) => `<td>${renderLinha(c.trim())}</td>`).join("");
+      const classe = linha.destaque ? "destaque" : `dados${par ? " par" : ""}`;
+      return `<tr class="${classe}">${celulas}</tr>`;
+    })
+    .join("\n");
+  const tituloChip = tabela.titulo.trim().length > 0
+    ? `<div class="chip-titulo${tabela.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(tabela.titulo.trim())}</div>`
+    : "";
+  const larguraPct = tabela.largura === 2 ? "100%" : "50%";
+  return `<div class="bloco-col tabela-col" style="width:${larguraPct}" data-tabela="${escapeHtml(tabela.id)}">
 ${tituloChip}
 <table class="tabela">
 <thead><tr>${cabecalho}</tr></thead>

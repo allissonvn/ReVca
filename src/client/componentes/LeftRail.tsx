@@ -61,8 +61,7 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
     const modelo = modeloDe(modeloId);
     const n = Math.max(modelo?.minCartoes ?? 1, 1);
     const faixa = modelo?.faixaPorCartao ? undefined : "Nova faixa";
-    // Página do modelo de tabela já nasce com um bloco de tabela (senão ficaria
-    // um chip vazio no lugar da tabela).
+    // Página do modelo de tabela já nasce com uma tabela (não bloco)
     const tipoId = modeloId === "tabela" ? "tabela" : "texto";
     const nova = {
       id: crypto.randomUUID().slice(0, 8),
@@ -72,7 +71,15 @@ export function LeftRail({ estouros, somenteLeitura }: Props): JSX.Element {
         id: crypto.randomUUID().slice(0, 8),
         empreendimentoId: null,
         titulo: ["Condições para o ..."],
-        blocos: [novoBloco(tipoId, tipoBlocoDe(tipoId))],
+        blocos: tipoId === "tabela" ? [] : [novoBloco(tipoId, tipoBlocoDe(tipoId))],
+        tabelas: tipoId === "tabela" ? [{
+          id: crypto.randomUUID().slice(0, 8),
+          ativo: true,
+          largura: 2,
+          titulo: "",
+          tituloCor: "preto",
+          tabela: { cabecalho: ["COLUNA 1", "COLUNA 2", "COLUNA 3"], linhas: [] },
+        }] : [],
       })),
     };
     c.paginas.push(nova as Pagina);

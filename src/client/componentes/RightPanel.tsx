@@ -1,17 +1,17 @@
 // Painel direito reestruturado (Phase 3): stack de Section cards, gap 12.
-// 1. Cartão N: empreendimento select; "Faixa verde" como dois inputs full-width.
-// 2. Bloco selecionado: chip com tipo; color toolbar (Azul/Vermelho/Sem cor);
-//    textarea ≥ 5 rows auto-growing; Segmented "2 colunas | 1 coluna";
-//    título colapsável (Type icon, título atual, "Alterar ▾").
-// 3. Outros blocos: linha compacta por bloco (grip, nome, primeira linha,
-//    eye toggle). Clicar seleciona e expande acima.
-// 4. "Rodapé" e "Duplicar para outro mês" em seção "Campanha" colapsada por
-//    default.
+// 1. Campanha (colapsada): rodapé, duplicar
+// 2. Página: modelo, faixa da página, cor da faixa
+// 3. Cartão N: empreendimento select; faixa do cartão (cor, posição, mostrar logo);
+//    faixa verde como dois inputs full-width
+// 4. Bloco/Tabela selecionado: editor específico
+// 5. Outros blocos: linha compacta por bloco (grip, nome, primeira linha, eye toggle)
+// 6. Tabelas: linha compacta por tabela (grip, título, eye toggle)
+// 7. "Rodapé" e "Duplicar para outro mês" em seção "Campanha" colapsada por default.
 import type { JSX } from "react";
 import { useState } from "react";
-import { Cartao, CartaoSchema } from "../../shared/schema.js";
+import { Cartao, CartaoSchema, Tabela } from "../../shared/schema.js";
 import { extrairRanges } from "../../shared/markup.js";
-import { empreendimentoDe, modeloDe, tipoBlocoDe, estado, useEstado, marcarSujo, selecionarBloco } from "../store.js";
+import { empreendimentoDe, modeloDe, tipoBlocoDe, estado, useEstado, marcarSujo, selecionarBloco, selecionarTabela } from "../store.js";
 import { novoBloco } from "../blocos.js";
 import { Section } from "../ui/Card.js";
 import { Button } from "../ui/Button.js";
@@ -33,9 +33,18 @@ import {
   GripVertical,
   Layers,
   FileText,
+  Table,
 } from "lucide-react";
 
-type BlocoSel = { ci: number; bi: number };
+type BlocoSel = { ci: number; bi: number; tipo: "bloco" } | { ci: number; ti: number; tipo: "tabela" };
+
+function isBlocoSel(sel: BlocoSel | null): sel is { ci: number; bi: number; tipo: "bloco" } {
+  return sel !== null && sel.tipo === "bloco";
+}
+
+function isTabelaSel(sel: BlocoSel | null): sel is { ci: number; ti: number; tipo: "tabela" } {
+  return sel !== null && sel.tipo === "tabela";
+}
 
 type Props = {
   onDuplicar: () => void;
@@ -50,12 +59,16 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
   const modelo = modeloDe(pag.modelo);
   const faixaPorCartao = modelo?.faixaPorCartao === true;
 
-  // Bloco selecionado vem do estado compartilhado (clique no canvas e lista
-  // "Outros blocos" apontam para o MESMO bloco — antes cada um tinha estado).
-  // O guard evita seleção de página/cartão que já não existe.
+  // Seleção unificada: bloco OU tabela
   const selBruto = e.blocoSelecionado;
-  const blocoSel: BlocoSel | null =
-    selBruto && pag.cartoes[selBruto.ci]?.blocos[selBruto.bi] ? selBruto : null;
+  let blocoSel: BlocoSel | null = null;
+  if (selBruto) {
+    if (selBruto.tipo === "bloco" && pag.cartoes[selBruto.ci]?.blocos[selBruto.bi]) {
+      blocoSel = selBruto;
+    } else if (selBruto.tipo === "tabela" && pag.cartoes[selBruto.ci]?.tabelas?.[selBruto.ti]) {
+      blocoSel = selBruto;
+    }
+  }
   const [campanhaColapsada, setCampanhaColapsada] = useState(true);
   const [tituloExpandido, setTituloExpandido] = useState(false);
 
@@ -63,11 +76,14 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
   const car = pag.cartoes[cartaoIndex];
   if (!car) return <aside className="right-panel" />;
   const carAtual = car;
-  // Bloco de tabela tem editor próprio (sem textarea/largura/título de chip).
-  const ehTabela = blocoSel ? carAtual.blocos[blocoSel.bi]?.tabela !== undefined : false;
+  const ehTabela = blocoSel?.tipo === "tabela";
+
+  // Guardas para evitar "possibly undefined" no JSX
+  const tabelaSel = isTabelaSel(blocoSel) && carAtual!.tabelas?.[blocoSel.ti];
+  const blocoSelObj = isBlocoSel(blocoSel) && carAtual!.blocos?.[blocoSel.bi];
 
   function pintarBloco(cor: "preto" | "vermelho"): void {
-    if (!blocoSel) return;
+    if (!isBlocoSel(blocoSel)) return;
     const bloco = carAtual!.blocos[blocoSel.bi]!;
     if (!bloco) return;
     bloco.tituloCor = cor;
@@ -75,20 +91,19 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
   }
 
   function corTituloAtual(): "preto" | "vermelho" {
-    if (!blocoSel) return "preto";
+    if (!isBlocoSel(blocoSel)) return "preto";
     const bloco = carAtual!.blocos[blocoSel.bi]!;
     if (!bloco) return "preto";
-    return bloco.tituloCor === "vermelho" ? "vermelho" : "preto";
+    return bloco.tituloCor;
   }
 
-  /** Título pronto atualmente aplicado ao bloco selecionado (por texto). */
   function tituloProntoAtual() {
-    if (!blocoSel || !e.catalogos) return undefined;
-    const texto = textoPuro(carAtual!.blocos[blocoSel.bi]!.titulo);
-    return e.catalogos.titulos.find((t) => t.texto === texto);
+    if (!isBlocoSel(blocoSel)) return null;
+    const bloco = carAtual!.blocos[blocoSel.bi]!;
+    if (!bloco) return null;
+    return e.catalogos?.titulos.find((t) => t.texto === bloco.titulo && t.cor === bloco.tituloCor) ?? null;
   }
 
-  /** Marcadores de cor saem da prévia: o usuário lê texto, não markup. */
   function textoPuro(marcado: string): string {
     return extrairRanges(marcado).plain;
   }
@@ -135,7 +150,6 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
               const novo = modeloDe(ev.target.value);
               if (!novo) return;
               pag.modelo = novo.id;
-              // respeita min/max do modelo escolhido
               while (pag.cartoes.length > novo.maxCartoes) pag.cartoes.pop();
               while (pag.cartoes.length < novo.minCartoes) pag.cartoes.push(cartaoEmBranco());
               marcarSujo();
@@ -170,32 +184,23 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
       </Section>
 
       {/* ---- Seção Cartão ---- */}
-      <Section titulo={`Cartão ${cartaoIndex + 1}`} icon={Shield}>
+      <Section titulo={`Cartão ${cartaoIndex + 1}`} icon={Layers}>
         <div className="secao-conteudo">
           <Field
-            id={`empreendimento-cartao-${cartaoIndex}`}
+            id={`empreendimento-${cartaoIndex}`}
             label="Empreendimento"
             select
             value={carAtual!.empreendimentoId ?? ""}
-            opcoes={[
-              { valor: "", rotulo: "(sem catálogo)" },
-              ...e.catalogos.empreendimentos.map((x) => ({ valor: x.id, rotulo: x.nome[0] ?? x.id })),
-            ]}
+            opcoes={[{ valor: "", rotulo: "(nenhum)" }, ...e.catalogos.empreendimentos.map((emp) => ({ valor: emp.id, rotulo: emp.nome[0] ?? emp.id }))]}
             onChange={(ev) => {
               carAtual!.empreendimentoId = ev.target.value || null;
-              const escolhido = empreendimentoDe(carAtual!.empreendimentoId);
-              if (escolhido) {
-                carAtual!.titulo = [...escolhido.nome];
-                if (escolhido.faixa) {
-                  const pagAtual = estado.campanha?.paginas[estado.pagSelecionada];
-                  if (modeloDe(pagAtual?.modelo ?? "")?.faixaPorCartao) carAtual!.faixa = escolhido.faixa;
-                  else if (pagAtual) pagAtual.faixa = escolhido.faixa;
-                }
+              if (ev.target.value) {
+                const emp = empreendimentoDe(ev.target.value);
+                if (emp && !carAtual!.faixa) carAtual!.faixa = emp.faixa;
               }
               marcarSujo();
             }}
           />
-
           <label className="inline">
             <input
               type="checkbox"
@@ -280,21 +285,21 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
         </div>
       </Section>
 
-      {/* ---- Seção Bloco selecionado ---- */}
+      {/* ---- Seção Bloco/Tabela selecionado ---- */}
       {blocoSel && (
         <Section
-          titulo="Bloco selecionado"
-          icon={Pencil}
+          titulo={ehTabela ? "Tabela selecionada" : "Bloco selecionado"}
+          icon={ehTabela ? Table : Pencil}
           className="secao-bloque-selecionado"
         >
           <div className="secao-conteudo">
             <div className="bloco-cabecalho">
               <Chip>
-                {tipoBlocoDe(carAtual!.blocos[blocoSel.bi]!.tipo)?.nome ?? carAtual!.blocos[blocoSel.bi]!.tipo}
+                {ehTabela
+                  ? "Tabela de valores"
+                  : isBlocoSel(blocoSel) ? tipoBlocoDe(carAtual!.blocos[blocoSel.bi]!.tipo)?.nome ?? carAtual!.blocos[blocoSel.bi]!.tipo : ""}
               </Chip>
               <div className="bloco-cor-toolbar">
-                {/* cor do TÍTULO: só existem preto/vermelho (mesmas opções do
-                    select "Cor do título" abaixo). Tabela não tem título de chip. */}
                 {!ehTabela && (
                   <>
                     <button
@@ -318,20 +323,38 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                   </>
                 )}
                 <IconButton
-                  icon={carAtual!.blocos[blocoSel.bi]!.ativo ? EyeOff : Eye}
+                  icon={tabelaSel
+                    ? (tabelaSel.ativo ? EyeOff : Eye)
+                    : blocoSelObj
+                      ? (blocoSelObj.ativo ? EyeOff : Eye)
+                      : Eye}
                   cor="muted"
-                  aria-label={carAtual!.blocos[blocoSel.bi]!.ativo ? "Ocultar bloco" : "Exibir bloco"}
+                  aria-label={tabelaSel
+                    ? (tabelaSel.ativo ? "Ocultar tabela" : "Exibir tabela")
+                    : blocoSelObj
+                      ? (blocoSelObj.ativo ? "Ocultar bloco" : "Exibir bloco")
+                      : ""}
                   onClick={() => {
-                    carAtual!.blocos[blocoSel.bi]!.ativo = !carAtual!.blocos[blocoSel.bi]!.ativo;
+                    if (tabelaSel) {
+                      tabelaSel.ativo = !tabelaSel.ativo;
+                    } else if (blocoSelObj) {
+                      blocoSelObj.ativo = !blocoSelObj.ativo;
+                    }
                     marcarSujo();
                   }}
                 />
                 <IconButton
                   icon={Trash2}
                   cor="danger"
-                  aria-label="Excluir bloco"
+                  aria-label={tabelaSel ? "Excluir tabela" : "Excluir bloco"}
                   onClick={() => {
-                    carAtual!.blocos.splice(blocoSel.bi, 1);
+                    const sel = blocoSel;
+                    if (!sel || !carAtual) return;
+                    if (tabelaSel && isTabelaSel(sel) && carAtual.tabelas) {
+                      carAtual.tabelas.splice(sel.ti, 1);
+                    } else if (blocoSelObj && isBlocoSel(sel)) {
+                      carAtual.blocos.splice(sel.bi, 1);
+                    }
                     estado.blocoSelecionado = null;
                     marcarSujo();
                   }}
@@ -339,60 +362,54 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
               </div>
             </div>
 
-            {ehTabela ? (
-              <TabelaEditor bloco={carAtual!.blocos[blocoSel.bi]!} />
-            ) : (
+            {tabelaSel ? (
+              <TabelaEditor tabela={tabelaSel} />
+            ) : blocoSelObj ? (
               <>
-            <div className="field">
-              <label>
-                Texto (uma linha = um chip)
-                <CampoCor
-                  marcado={carAtual!.blocos[blocoSel.bi]!.texto}
-                  multilinea
-                  aria={`Texto do bloco selecionado`}
-                  aoMudar={(m: string) => { carAtual!.blocos[blocoSel.bi]!.texto = m; marcarSujo(); }}
-                />
-              </label>
-            </div>
+                <div className="field">
+                  <label>
+                    Texto (uma linha = um chip)
+                    <CampoCor
+                      marcado={blocoSelObj.texto}
+                      multilinea
+                      aria={`Texto do bloco selecionado`}
+                      aoMudar={(m: string) => { blocoSelObj.texto = m; marcarSujo(); }}
+                    />
+                  </label>
+                </div>
 
-            <div className="bloco-largura field">
-              <label>
-                Largura
-                <Segmented
-                  opcoes={[
-                    { valor: "2", rotulo: "2 colunas" },
-                    { valor: "1", rotulo: "1 coluna" },
-                  ]}
-                  valor={carAtual!.blocos[blocoSel.bi]!.largura.toString()}
-                  onMudar={(v: string) => { carAtual!.blocos[blocoSel.bi]!.largura = Number(v) as 1 | 2; marcarSujo(); }}
-                />
-              </label>
-            </div>
+                <div className="bloco-largura field">
+                  <label>
+                    Largura
+                    <Segmented
+                      opcoes={[
+                        { valor: "2", rotulo: "2 colunas" },
+                        { valor: "1", rotulo: "1 coluna" },
+                      ]}
+                      valor={blocoSelObj.largura.toString()}
+                      onMudar={(v: string) => { blocoSelObj.largura = Number(v) as 1 | 2; marcarSujo(); }}
+                    />
+                  </label>
+                </div>
 
-            {/* Título colapsável */}
-            <div className="bloco-titulo-row" onClick={() => setTituloExpandido((a) => !a)}>
-              <Type size={16} strokeWidth={2} aria-hidden="true" />
-              <span className="bloco-titulo-texto">{textoPuro(carAtual!.blocos[blocoSel.bi]!.titulo) || "(sem título)"}</span>
-              <span className="bloco-titulo-acao">Alterar ▾</span>
-            </div>
-            {tituloExpandido && (
-              <div className="bloco-titulo-expandido">
-                <Field
-                  id="cor-titulo-bloco"
-                  label="Cor do título"
-                  select
-                  value={carAtual!.blocos[blocoSel.bi]!.tituloCor}
-                  opcoes={[
-                    { valor: "preto", rotulo: "Preto" },
-                    { valor: "vermelho", rotulo: "Vermelho" },
-                  ]}
-                  onChange={(ev) => {
-                    if (ev.target.value === "preto" || ev.target.value === "vermelho") {
-                      carAtual!.blocos[blocoSel.bi]!.tituloCor = ev.target.value;
-                      marcarSujo();
-                    }
-                  }}
-                />
+                <div className="bloco-titulo field">
+                  <label>
+                    Cor do título
+                    <select
+                      value={blocoSelObj.tituloCor}
+                      onChange={(ev) => {
+                        if (ev.target.value === "preto" || ev.target.value === "vermelho") {
+                          blocoSelObj.tituloCor = ev.target.value;
+                          marcarSujo();
+                        }
+                      }}
+                    >
+                      <option value="preto">Preto</option>
+                      <option value="vermelho">Vermelho</option>
+                    </select>
+                  </label>
+                </div>
+
                 {/* TÍTULO PRONTO: seleção do catálogo */}
                 <div className="field">
                   <label>
@@ -404,8 +421,8 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                       onChange={(ev) => {
                         const p = e.catalogos?.titulos.find((x) => x.texto === ev.target.value);
                         if (p) {
-                          carAtual!.blocos[blocoSel.bi]!.titulo = p.texto;
-                          carAtual!.blocos[blocoSel.bi]!.tituloCor = p.cor;
+                          blocoSelObj.titulo = p.texto;
+                          blocoSelObj.tituloCor = p.cor;
                           marcarSujo();
                         }
                       }}
@@ -421,54 +438,51 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                   <label>
                     Título (texto livre)
                     <CampoCor
-                      marcado={carAtual!.blocos[blocoSel.bi]!.titulo}
+                      marcado={blocoSelObj.titulo}
                       aria={`Título do bloco selecionado`}
-                      aoMudar={(m: string) => { carAtual!.blocos[blocoSel.bi]!.titulo = m; marcarSujo(); }}
+                      aoMudar={(m: string) => { blocoSelObj.titulo = m; marcarSujo(); }}
                     />
                   </label>
                 </div>
-              </div>
-            )}
               </>
-            )}
+            ) : null}
           </div>
         </Section>
       )}
 
-      {/* ---- Outros blocos ---- */}
-      <Section titulo="Outros blocos" icon={Layers}>
+      {/* ---- Outros blocos (exclui tipo "tabela") ---- */}
+      <Section titulo="Blocos" icon={Layers}>
         <div className="secao-conteudo">
-          {carAtual!.blocos.map((b, bi) => {
-            if (blocoSel && blocoSel.ci === cartaoIndex && blocoSel.bi === bi) return null;
-            const tipo = tipoBlocoDe(b.tipo);
-            const resumo = b.tabela
-              ? b.tabela.cabecalho.join(" · ")
-              : textoPuro(b.texto).split("\n")[0] || "";
-            return (
-              <div
-                key={b.id}
-                className={`bloco-linha${b.ativo ? "" : " inativo"}`}
-                onClick={() => selecionarBloco(cartaoIndex, bi)}
-              >
-                <div className="bloco-linha-grip">
-                  <GripVertical size={14} strokeWidth={2} />
+          {carAtual!.blocos
+            .filter((b) => b.tipo !== "tabela")
+            .map((b, bi) => {
+              const tipo = tipoBlocoDe(b.tipo);
+              const resumo = textoPuro(b.texto).split("\n")[0] || "";
+              return (
+                <div
+                  key={b.id}
+                  className={`bloco-linha${b.ativo ? "" : " inativo"}`}
+                  onClick={() => selecionarBloco(cartaoIndex, bi)}
+                >
+                  <div className="bloco-linha-grip">
+                    <GripVertical size={14} strokeWidth={2} />
+                  </div>
+                  <div className="bloco-linha-info">
+                    <div className="bloco-linha-nome">{tipo?.nome ?? b.tipo}</div>
+                    <div className="bloco-linha-texto">{resumo}</div>
+                  </div>
+                  <IconButton
+                    icon={b.ativo ? Eye : EyeOff}
+                    cor="muted"
+                    aria-label={b.ativo ? "Ocultar bloco" : "Exibir bloco"}
+                    onClick={() => {
+                      b.ativo = !b.ativo;
+                      marcarSujo();
+                    }}
+                  />
                 </div>
-                <div className="bloco-linha-info">
-                  <div className="bloco-linha-nome">{tipo?.nome ?? b.tipo}</div>
-                  <div className="bloco-linha-texto">{resumo}</div>
-                </div>
-                <IconButton
-                  icon={b.ativo ? Eye : EyeOff}
-                  cor="muted"
-                  aria-label={b.ativo ? "Ocultar bloco" : "Exibir bloco"}
-                  onClick={() => {
-                    b.ativo = !b.ativo;
-                    marcarSujo();
-                  }}
-                />
-              </div>
-            );
-          })}
+              );
+            })}
           <div className="bloco-adicionar">
             <div className="field">
               <label>
@@ -478,9 +492,11 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
                   aria-label="Tipo do novo bloco"
                   defaultValue="texto"
                 >
-                  {e.catalogos.tiposBloco.map((t) => (
-                    <option key={t.id} value={t.id}>{t.nome}</option>
-                  ))}
+                  {e.catalogos.tiposBloco
+                    .filter((t) => t.id !== "tabela")
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>{t.nome}</option>
+                    ))}
                 </select>
               </label>
             </div>
@@ -499,6 +515,58 @@ export function RightPanel({ onDuplicar }: Props): JSX.Element | null {
           </div>
         </div>
       </Section>
+
+      {/* ---- Tabelas (nova seção separada) ---- */}
+      <Section titulo="Tabelas" icon={Table}>
+        <div className="secao-conteudo">
+          {(carAtual!.tabelas ?? []).map((t, ti) => (
+            <div
+              key={t.id}
+              className={`bloco-linha${t.ativo ? "" : " inativo"}`}
+              onClick={() => selecionarTabela(cartaoIndex, ti)}
+            >
+              <div className="bloco-linha-grip">
+                <GripVertical size={14} strokeWidth={2} />
+              </div>
+              <div className="bloco-linha-info">
+                <div className="bloco-linha-nome">Tabela de valores</div>
+                <div className="bloco-linha-texto">{t.titulo || t.tabela.cabecalho.join(" · ")}</div>
+              </div>
+              <IconButton
+                icon={t.ativo ? Eye : EyeOff}
+                cor="muted"
+                aria-label={t.ativo ? "Ocultar tabela" : "Exibir tabela"}
+                onClick={() => {
+                  t.ativo = !t.ativo;
+                  marcarSujo();
+                }}
+              />
+            </div>
+          ))}
+          <button
+            className="btn fantasma bloco"
+            type="button"
+            onClick={() => {
+              const novaTabela: Tabela = {
+                id: crypto.randomUUID().slice(0, 8),
+                ativo: true,
+                largura: 2,
+                titulo: "",
+                tituloCor: "preto",
+                tabela: {
+                  cabecalho: ["COLUNA 1", "COLUNA 2", "COLUNA 3"],
+                  linhas: [],
+                },
+              };
+              if (!carAtual!.tabelas) carAtual!.tabelas = [];
+              carAtual!.tabelas.push(novaTabela);
+              marcarSujo();
+            }}
+          >
+            + Adicionar tabela
+          </button>
+        </div>
+      </Section>
     </aside>
   );
 }
@@ -509,6 +577,7 @@ function cartaoEmBranco(): Cartao {
     id: crypto.randomUUID().slice(0, 8),
     empreendimentoId: null,
     titulo: ["Condições para o ..."],
-    blocos: [{ id: crypto.randomUUID().slice(0, 8), tipo: "texto", ativo: true, largura: 2, titulo: "", tituloCor: "preto", texto: "" }],
+    blocos: [novoBloco("texto", tipoBlocoDe("texto"))],
+    tabelas: [],
   });
 }

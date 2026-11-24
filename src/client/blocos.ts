@@ -1,9 +1,14 @@
 // Blocos novos do editor: centraliza os defaults para que a criação pela lista
 // de blocos (RightPanel) e por uma página nova (LeftRail) fiquem iguais.
-import { Bloco, BlocoSchema, Tabela, TipoBloco } from "../shared/schema.js";
+import { Bloco, BlocoSchema, BlocoTabela, TipoBloco } from "../shared/schema.js";
 
-/** Tabela vazia padrão: 3 colunas, sem linhas. */
-export function tabelaEmBranco(): Tabela {
+/** Tabela vazia padrão (para bloco tipo "tabela"): 3 colunas, sem linhas. */
+export function tabelaEmBranco(): BlocoTabela {
+  return { cabecalho: ["COLUNA 1", "COLUNA 2", "COLUNA 3"], linhas: [] };
+}
+
+/** Tabela vazia padrão (para entidade Tabela separada): 3 colunas, sem linhas. */
+export function tabelaEntidadeEmBranco(): { cabecalho: string[]; linhas: any[] } {
   return { cabecalho: ["COLUNA 1", "COLUNA 2", "COLUNA 3"], linhas: [] };
 }
 

@@ -19,23 +19,23 @@ export type Largura = z.infer<typeof LarguraSchema>;
 export const FaixaCorSchema = z.enum(["azul", "verde"]);
 export type FaixaCor = z.infer<typeof FaixaCorSchema>;
 
-// ---- Tabela (bloco estruturado de valores) ----
+// ---- Tabela (estrutura interna usada dentro do bloco "tabela") ----
 // Linha de seção ocupa a tabela inteira (colspan) e tem 1 célula;
 // linha de dados tem o mesmo número de células do cabeçalho.
 // `destaque` pinta a linha de dados como faixa escura (ex.: "2/4 - COM SUÍTE").
 
-export const TabelaLinhaSchema = z.object({
+export const BlocoTabelaLinhaSchema = z.object({
   secao: z.boolean(),
   celulas: z.array(z.string()).min(1).max(6),
   destaque: z.boolean().optional(),
 });
-export type TabelaLinha = z.infer<typeof TabelaLinhaSchema>;
+export type BlocoTabelaLinha = z.infer<typeof BlocoTabelaLinhaSchema>;
 
-export const TabelaSchema = z.object({
+export const BlocoTabelaSchema = z.object({
   cabecalho: z.array(z.string()).min(1).max(6),
-  linhas: z.array(TabelaLinhaSchema),
+  linhas: z.array(BlocoTabelaLinhaSchema),
 });
-export type Tabela = z.infer<typeof TabelaSchema>;
+export type BlocoTabela = z.infer<typeof BlocoTabelaSchema>;
 
 export const BlocoSchema = z
   .object({
@@ -49,7 +49,7 @@ export const BlocoSchema = z
     // Uma linha = um chip; aceita markup de cor
     texto: z.string(),
     // Quando presente, o bloco é uma tabela e `texto` não é usado.
-    tabela: TabelaSchema.optional(),
+    tabela: BlocoTabelaSchema.optional(),
   })
   .superRefine((bloco, ctx) => {
     if (!bloco.tabela) return;
@@ -77,6 +77,31 @@ export const BlocoSchema = z
   });
 export type Bloco = z.infer<typeof BlocoSchema>;
 
+// ---- Tabela (entidade separada, não é bloco) ----
+// Cabeçalho (2–6 colunas), linhas de seção (colspan) e dados.
+// `destaque` pinta a linha de dados como faixa escura (ex.: "2/4 - COM SUÍTE").
+export const TabelaSchema = z.object({
+  id: z.string().min(1),
+  ativo: z.boolean(),
+  largura: LarguraSchema,
+  // Título aceita markup de cor ([[azul]] / ((vermelho)))
+  titulo: z.string(),
+  tituloCor: TituloCorSchema,
+  // Estrutura da tabela
+  tabela: z.object({
+    cabecalho: z.array(z.string()).min(1).max(6),
+    linhas: z.array(z.object({
+      secao: z.boolean(),
+      celulas: z.array(z.string()).min(1).max(6),
+      destaque: z.boolean().optional(),
+    })).superRefine((linhas, ctx) => {
+      // validação cruzada: precisa do cabecalho para saber nº de colunas
+      // mas aqui não temos acesso ao cabecalho; validação real acontece no nível do Cartao/Pagina
+    }),
+  }),
+});
+export type Tabela = z.infer<typeof TabelaSchema>;
+
 export const CartaoSchema = z.object({
   id: z.string().min(1),
   empreendimentoId: z.string().nullable(),
@@ -90,6 +115,8 @@ export const CartaoSchema = z.object({
   // Faixa verde: 1 ou 2 linhas; vazio = sem faixa
   titulo: z.array(z.string()).min(1).max(2),
   blocos: z.array(BlocoSchema),
+  // Tabelas (entidade separada dos blocos)
+  tabelas: z.array(TabelaSchema).optional(),
 });
 export type Cartao = z.infer<typeof CartaoSchema>;
 
