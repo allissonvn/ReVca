@@ -933,15 +933,22 @@ a:focus-visible,
   padding: 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 16px;
   background: var(--canvas);
 }
+/* A moldura reserva o espaço já escalado (924*z × 1308*z) e centraliza a arte.
+   Sem align-items: center no .canvas: um frame mais largo que a viewport precisa
+   poder ser rolado até a borda esquerda (align-items: center cortaria a esquerda). */
+.canvas .moldura {
+  flex: none;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
 .zoom-bar {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
+  position: sticky;
+  bottom: 16px;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 8px;

@@ -197,7 +197,7 @@ function renderCartao(cartao: Cartao, modelo: Modelo, ctx: RenderCtx): string {
     : "";
   const logo = renderLogo(emp);
   const linhasFaixaVerde = cartao.titulo.filter((l) => l.trim().length > 0).map(escapeHtml).join("<br>");
-  const blocosHtml = renderBlocos(cartao, modelo);
+  const blocosHtml = renderBlocos(cartao, modelo, ctx);
   return `<div class="cartao" data-cartao="${escapeHtml(cartao.id)}">
 ${faixaMini}
 <div class="logo-area">${logo}</div>
@@ -259,12 +259,12 @@ function descarregarLinha(
   }
 }
 
-function renderBlocos(cartao: Cartao, modelo: Modelo): string {
+function renderBlocos(cartao: Cartao, modelo: Modelo, ctx: RenderCtx): string {
   const linhas = linhasDaGrade(cartao.blocos);
   return linhas
     .map(({ blocos, solitaria }) => {
       const classe = solitaria && modelo.celulaSolitaria === "centro" ? " linha-blocos centro" : " linha-blocos";
-      const cols = blocos.map((b) => renderBloco(b)).join("\n");
+      const cols = blocos.map((b) => renderBloco(b, ctx)).join("\n");
       return `<div class="${classe.trim()}">
 ${cols}
 </div>`;
@@ -272,7 +272,7 @@ ${cols}
     .join("\n");
 }
 
-function renderBloco(bloco: BlocoAtivo): string {
+function renderBloco(bloco: BlocoAtivo, ctx: RenderCtx): string {
   const tituloChip = bloco.titulo.trim().length > 0
     ? `<div class="chip-titulo${bloco.tituloCor === "vermelho" ? " vermelho" : ""}">${renderLinha(bloco.titulo.trim())}</div>`
     : "";
@@ -283,9 +283,11 @@ function renderBloco(bloco: BlocoAtivo): string {
     .map((l) => `<div class="chip">${renderLinha(l.trim())}</div>`)
     .join("\n");
   const larguraPct = bloco.largura === 2 ? "100%" : "50%";
-  // data-bloco-nome: atributo puro de metadados (tipo do bloco). Só é usado pelo
-  // editor para o destaque do bloco selecionado; nunca altera a arte do PDF.
-  return `<div class="bloco-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(bloco.tipo)}">
+  // data-bloco-nome: atributo puro de metadados (nome do tipo, vindo do catálogo).
+  // Só é usado pelo editor para o destaque do bloco selecionado; nunca altera a
+  // arte do PDF (o exportador não injeta a regra de outline).
+  const nomeTipo = ctx.catalogos.tiposBloco.find((t) => t.id === bloco.tipo)?.nome ?? bloco.tipo;
+  return `<div class="bloco-col" style="width:${larguraPct}" data-bloco="${escapeHtml(bloco.id)}" data-bloco-nome="${escapeHtml(nomeTipo)}">
 ${tituloChip}
 ${chips}
 </div>`;

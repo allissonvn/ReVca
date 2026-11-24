@@ -13,6 +13,7 @@
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "check:canvas": "npm run build && node scripts/check-canvas.mjs",
     "seed": "node dist/scripts/seed.js"
   },
   "dependencies": {

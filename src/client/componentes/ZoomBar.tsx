@@ -1,10 +1,8 @@
 // Barra de zoom do canvas (Phase 3).
 // 25–200%, default "fit to screen", Ctrl+wheel, teclas +, -, 0.
 import type { JSX } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { Minus, Plus, Maximize, Minimize2, AlertTriangle, CheckCircle } from "lucide-react";
-import { Button } from "../ui/Button.js";
-import { IconButton } from "../ui/IconButton.js";
 
 type ZoomBarProps = {
   /** Zoom atual (0.25–2.0). */

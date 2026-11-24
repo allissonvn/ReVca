@@ -247,10 +247,10 @@ describe("renderCampanha", () => {
     expect(html2).toContain("Válido até 30/11");
   });
 
-  it("renderBloco emite data-bloco-nome com o tipo do bloco", () => {
-    expect(html).toContain('data-bloco="blo-1" data-bloco-nome="financiamento"');
-    expect(html).toContain('data-bloco="blo-4" data-bloco-nome="observacao"');
-    expect(html).toContain('data-bloco="blo-16" data-bloco-nome="texto"');
+  it("renderBloco emite data-bloco-nome com o nome do tipo (catálogo)", () => {
+    expect(html).toContain('data-bloco="blo-1" data-bloco-nome="Financiamento CEF"');
+    expect(html).toContain('data-bloco="blo-4" data-bloco-nome="Observação"');
+    expect(html).toContain('data-bloco="blo-16" data-bloco-nome="Texto livre"');
   });
 
   it("data-bloco-nome não altera o restante do markup (semântica da exportação inalterada)", () => {
@@ -267,7 +267,7 @@ describe("renderCampanha", () => {
   it("documento de exportação não contém regra de destaque do bloco selecionado", () => {
     const doc = renderDocumento(campanhaSeed, carregarCatalogos());
     // data-bloco-nome é metadados inofensivo (está presente), mas nunca vira CSS de destaque
-    expect(doc).toContain('data-bloco-nome="financiamento"');
+    expect(doc).toContain('data-bloco-nome="Financiamento CEF"');
     expect(doc).not.toContain("::before");
     expect(doc).not.toContain("outline");
     expect(doc).not.toContain("--primary");

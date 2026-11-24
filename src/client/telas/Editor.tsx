@@ -12,21 +12,16 @@ import {
   notificarConteudo,
   marcarSujo,
   podeEditar,
-  selecionarBloco,
-  limparSelecaoBloco,
-  definirZoom,
-  alternarAjusteTela,
 } from "../store.js";
 import { LeftRail } from "../componentes/LeftRail.js";
 import { RightPanel } from "../componentes/RightPanel.js";
 import { Canvas } from "../componentes/Canvas.js";
-import { ZoomBar } from "../componentes/ZoomBar.js";
 import { ModalExportar } from "../componentes/ModalExportar.js";
 import { exportar } from "../exportar.js";
 import { Mark } from "../ui/Mark.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
-import { Calendar, Undo2, Redo2, Download, ArrowLeft, FileText, Sun, Moon, CircleCheck, AlertTriangle, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar, Undo2, Redo2, ArrowLeft, FileText, Sun, Moon, CircleCheck, AlertTriangle, AlertCircle, CheckCircle } from "lucide-react";
 
 const MESES = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
@@ -79,14 +74,6 @@ export function Editor({ id }: { id: string }): JSX.Element {
     const nova = await criarCampanha({ duplicarDe: c.id, mes });
     window.location.href = `/?campanha=${encodeURIComponent(nova.id)}`;
   }
-
-  const statusTextos: Record<string, string> = {
-    salvo: "Tudo salvo",
-    salvando: "Salvando",
-    sujo: "Alterações pendentes",
-    erro: "Erro ao salvar",
-    conflito: "Conflito: mudou em outro lugar",
-  };
 
   const pagSelecionada = c.paginas[estado.pagSelecionada];
   const estouro = pagSelecionada ? estouros.get(pagSelecionada.id) : undefined;
@@ -210,15 +197,6 @@ export function Editor({ id }: { id: string }): JSX.Element {
           <span className="status-estouro"><AlertTriangle size={12} strokeWidth={2} aria-hidden="true" /> Conteúdo passa do limite — <span className="status-estouro-cartao">"{nomeCartaoEstouro}" será cortado no PDF</span></span>
         )}
       </div>
-
-      {/* Barra de zoom fixa no viewport */}
-      <ZoomBar
-        zoom={estado.zoom}
-        aoMudarZoom={(z) => { definirZoom(z); }}
-        ajustado={estado.zoomAjustado}
-        aoAlternarAjuste={(ajustado) => { alternarAjusteTela(ajustado); }}
-        cabeNaPagina={cabeNaPagina}
-      />
 
       {modalAberto && (
         <ModalExportar

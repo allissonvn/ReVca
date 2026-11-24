@@ -242,3 +242,54 @@ O `scripts/screenshots.mjs` original não capturava a tela do editor e trocava o
 - **README** ganhou a seção "Como rodar os testes" (sem servidor/seed, fixtures em código,
   Chromium opcional, 127 esperados).
 - Verificação: `npm run typecheck` ✓ · `npm test` ✓ **127/127** · `npm run build` ✓.
+
+## Fix do canvas do editor (branch `fix/canvas`, nov/2026)
+
+Implementa `referencia/PROMPT-ZOOM.md` (zoom, destaque e aviso de estouro) sem tocar em
+data model, API, auth nem no PDF/PNG exportado.
+
+- **Zoom declarativo:** a `.moldura` reserva `924*z × 1308*z` no layout e a `.escala.arte`
+  recebe `transform: scale(z)` com origem no topo-esquerdo. Saiu o `useLayoutEffect` que
+  escrevia `style` imperativamente (a página trocava e o `transform` se perdia). A função
+  pura `tamanhoMoldura(zoom)` (clamp 25–200%) vive em
+  `src/client/componentes/tamanhoMoldura.ts`, com testes próprios.
+- **`.canvas` sem `align-items: center`:** com `flex-direction: column` + `gap: 16px` e
+  `.moldura { margin: 0 auto }`. Uma moldura mais larga que o canvas fica alinhada à
+  esquerda e pode ser rolada até a borda (com `center` as duas bordas eram cortadas).
+- **Clipping igual ao export:** `.pagina` mantém `overflow: hidden` no editor (WYSIWYG).
+  Removidas as regras `overflow: visible` e o `will-change` que existiam para a abordagem
+  anterior. `.canvas` rola por dentro (`overflow: auto`), então nada "vaza" sobre os painéis.
+- **Destaque sem mutar o DOM:** `render.ts` passou a emitir `data-bloco-nome` (nome do tipo
+  vindo do catálogo) ao lado de `data-bloco`. O destaque é um `<style>` do React com
+  `CSS.escape` (`outline` + `::before { content: attr(data-bloco-nome) }`), então sobrevive
+  a qualquer re-render da arte. Saíram `limparSelecaoBlocoDOM` e o efeito que criava
+  `.bloco-tag`; o exportador nunca injeta essa regra (testes em `tests/render.test.ts`).
+- **Estouro medido após cada render:** `useLayoutEffect` depende do HTML renderizado,
+  `pagSelecionada`, `verTodas` e `zoom`, e remede depois de `document.fonts.ready`. Usa o
+  `z` atual para converter px da tela em px da arte e acha o **primeiro cartão**
+  (`[data-cartao]`) cujo fundo passa de 1308. O aviso é um `<button>` React acima da
+  moldura (ícone `TriangleAlert`, sem emoji); o clique seleciona o cartão. A barra de zoom,
+  o status "Cabe na página" e o badge da lista de páginas leem o mesmo mapa.
+- **Barra de zoom:** `position: sticky; bottom: 16px; align-self: center` dentro do
+  `.canvas` (não mais `fixed` na janela). Sem `margin-top` extra: o `gap` do canvas já
+  separa a barra da moldura.
+- **`noUnusedLocals`:** ativado e testado, mas gerou **24 erros pré-existentes fora do
+  escopo** (Home, Usuarios, Field, auth, index, server.test etc.). O prompt manda pular
+  quando passam de 10; a opção foi revertida e o `tsconfig.json` ficou como estava. Os
+  imports não usados **dos arquivos do escopo** (ZoomBar, Editor) foram removidos.
+- **`scripts/check-canvas.mjs` (`npm run check:canvas`):** sobe o servidor já compilado com
+  um diretório de dados **temporário** (`tmp/check-canvas-data`, catálogos/logos copiados),
+  faz o bootstrap do admin com `REVCA_EMAIL`/`REVCA_SENHA`, cria uma campanha de 2 páginas e
+  valida em 1440×900 e 1280×800: tamanhos 462×654 / 924×1308 / 1386×1962, bordas
+  alcançáveis, zoom preservado ao trocar de página e em "ver todas", outline 2px + tag com
+  o nome do tipo após digitar, aviso nomeando o cartão e sumindo ao remover o excesso, e
+  barra centrada no canvas. Screenshots em `tmp/screens/canvas/` (gitignored).
+  - **Ajuste de medição (desvio consciente):** o limite de "sem espaço morto" a 50% inclui
+    a altura real da barra sticky (~50px). O limite do prompt (`frame + 48 + 16`) não
+    contava a barra, e o próprio canvas tem um piso de altura do viewport; a asserção usa
+    `max(clientHeight, frame + 48 + 16 + alturaDaBarra)`, que continua detectando o bug
+    antigo (a caixa ficava com 1308px). A centralização da barra é medida com
+    `scrollLeft = 0`, pois o sticky é só vertical.
+- Verificação: `npm run typecheck` ✓ (0 erros) · `npm test` ✓ **136/136** · `npm run
+  check:canvas` ✓ **32/32** (1440×900 e 1280×800) · `npm run build` ✓.
+

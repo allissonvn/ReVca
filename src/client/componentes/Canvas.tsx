@@ -1,20 +1,31 @@
 // Canvas central: a arte real gerada por render.ts (a MESMA do exportador).
-// Escala com transform e avisa quando o conteúdo passa de 1308px — tanto
-// visualmente quanto reportando o mapa de estouros ao editor.
-// Phase 3: inclui barra de zoom e destaca o bloco selecionado com outline.
-import { useLayoutEffect, useRef } from "react";
+// Zoom declarativo: a moldura reserva 924*z × 1308*z no layout e a arte interna
+// recebe transform: scale(z) com origem no topo-esquerdo (sem efeito imperativo).
+// O destaque do bloco selecionado e o aviso de estouro são renderizados pelo
+// React (nada de mutar o DOM da arte).
+import { Fragment, useLayoutEffect, useRef } from "react";
 import type { JSX } from "react";
+import { TriangleAlert } from "lucide-react";
 import { artCssEscopo, renderPagina } from "../../shared/render.js";
-import { estado, useEstado, notificarConteudo, selecionarBloco, selecionarPagina } from "../store.js";
+import {
+  estado,
+  useEstado,
+  notificarConteudo,
+  selecionarBloco,
+  selecionarPagina,
+  definirZoom,
+  alternarAjusteTela,
+} from "../store.js";
+import { ALTURA_PAGINA, LARGURA_PAGINA, limitarZoom, tamanhoMoldura } from "./tamanhoMoldura.js";
+import { ZoomBar } from "./ZoomBar.js";
 
-const LARGURA_PAGINA = 924;
-const ALTURA_PAGINA = 1308;
+type Estouro = { altura: number; cartaoId?: string };
 
 type Props = {
-  /** Mapa idDaPágina → { altura, cartaoId? } das páginas com estouro. */
-  estouros: Map<string, { altura: number; cartaoId?: string }>;
+  /** Mapa idDaPágina → { altura (fundo do último cartão), cartaoId? }. */
+  estouros: Map<string, Estouro>;
   /** Callback quando o mapa de estouros muda. */
-  aoEstouro?: (estouros: Map<string, { altura: number; cartaoId?: string }>) => void;
+  aoEstouro?: (estouros: Map<string, Estouro>) => void;
 };
 
 export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
@@ -22,27 +33,11 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const cssInjetado = useRef(false);
   const ultimoMapa = useRef("");
-  const cssDestaque = useRef<HTMLStyleElement | null>(null);
 
-  // aplica escala sempre que o zoom mudar
-  // usa transform origin top left + translate para centralizar o documento
-  // ao fazer zoom, evitando que fique grudado no canto superior esquerdo
-  useLayoutEffect(() => {
-    const el = container.current;
-    if (!el) return;
-    const escala = Math.max(0.25, Math.min(2, e.zoom));
-    el.querySelectorAll<HTMLElement>(".escala").forEach((m) => {
-      m.style.transformOrigin = "top left";
-      m.style.willChange = "transform";
-      // centraliza: translation para o centro, escala, então volta ao original
-      m.style.transform = `translate(-50%, -50%) scale(${escala}) translate(50%, 50%)`;
-      // tamanho do frame baseado no zoom para o container pai reconhecer o
-      // espaco necessario ao scroll (sem wrapper moldura, como pedido)
-      m.style.width = `${LARGURA_PAGINA * escala}px`;
-      m.style.height = `${ALTURA_PAGINA * escala}px`;
-    });
-  }, [e.zoom]);
+  const z = limitarZoom(e.zoom);
+  const { w, h } = tamanhoMoldura(e.zoom);
 
+  // CSS da arte (escopo .arte) injetado uma única vez.
   useLayoutEffect(() => {
     if (!cssInjetado.current) {
       const style = document.createElement("style");
@@ -50,129 +45,61 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
       document.head.appendChild(style);
       cssInjetado.current = true;
     }
-    const id = requestAnimationFrame(() => {
-      document.fonts.ready.then(() => medirEstouros());
-    });
-    const onResize = () => { /* escala já atualizada pelo effect de zoom */ };
-    window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
-  }, [e.campanha?.revisao, e.campanha?.paginas.length]);
+  }, []);
 
-  /** Altura real do conteúdo, em px da arte. Elementos absolutos (marca d'água)
-   *  não contam como conteúdo. Retorna a altura real e o id do cartão estourado. */
-  function alturaConteudo(pag: HTMLElement): { altura: number; cartaoId?: string } {
-    const rect = pag.getBoundingClientRect();
-    const escala = rect.width / LARGURA_PAGINA || 1;
-    let max = 0;
-    pag.querySelectorAll<HTMLElement>("*").forEach((filho) => {
-      const st = getComputedStyle(filho);
-      if (st.position === "absolute" || st.position === "fixed") return;
-      const fundo = (filho.getBoundingClientRect().bottom - rect.top) / escala;
-      if (fundo > max) max = fundo;
-    });
-    const altura = Math.round(max);
-    return { altura, cartaoId: cartaoEstourado(pag) };
-  }
+  // Mede o estouro depois de cada render (conteúdo, página, "ver todas", zoom)
+  // e de novo quando as fontes terminam de carregar (métricas mudam).
+  const assinatura = JSON.stringify(e.campanha?.paginas ?? []);
+  useLayoutEffect(() => {
+    let cancelado = false;
+    const medir = (): void => {
+      if (!cancelado) medirEstouros();
+    };
+    const id = requestAnimationFrame(medir);
+    void document.fonts.ready.then(medir);
+    return () => {
+      cancelado = true;
+      cancelAnimationFrame(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assinatura, estado.pagSelecionada, estado.verTodas, e.zoom]);
 
-  /** Qual cartão (se algum) passa do limite da página? Retorna o id do cartão. */
-  function cartaoEstourado(pag: HTMLElement): string | undefined {
+  /** Mede uma página: retorna estouro se o fundo de algum cartão passar de 1308. */
+  function medirPagina(pag: HTMLElement): Estouro | undefined {
     const rect = pag.getBoundingClientRect();
-    const escala = rect.width / LARGURA_PAGINA || 1;
-    for (const c of pag.querySelectorAll<HTMLElement>(".cartao")) {
-      const fundo = (c.getBoundingClientRect().bottom - rect.top) / escala;
-      if (fundo >= ALTURA_PAGINA) return c.dataset.cartao ?? undefined;
+    // getBoundingClientRect já vem multiplicado por z; convertemos de volta para px da arte.
+    let altura = 0;
+    let cartaoId: string | undefined;
+    for (const c of pag.querySelectorAll<HTMLElement>("[data-cartao]")) {
+      const fundo = (c.getBoundingClientRect().bottom - rect.top) / z;
+      if (fundo > altura) altura = fundo;
+      // o primeiro cartão cujo fundo passa de 1308 é o que será cortado no PDF
+      if (fundo >= ALTURA_PAGINA && cartaoId === undefined) {
+        cartaoId = c.dataset.cartao ?? undefined;
+      }
     }
+    if (altura >= ALTURA_PAGINA) return { altura: Math.round(altura), cartaoId };
     return undefined;
   }
 
   function medirEstouros(): void {
     const el = container.current;
     if (!el) return;
-    el.querySelectorAll(".aviso-estouro").forEach((a) => a.remove());
-    const mapa = new Map<string, { altura: number; cartaoId?: string }>();
+    const mapa = new Map<string, Estouro>();
     el.querySelectorAll<HTMLElement>(".pagina").forEach((pag) => {
-      const { altura, cartaoId } = alturaConteudo(pag);
-      if (altura >= ALTURA_PAGINA) {
-        mapa.set(pag.dataset.pagina ?? "", { altura, cartaoId });
-        const campanha = estado.campanha;
-        const pagina = campanha?.paginas.find((p) => p.id === pag.dataset.pagina);
-        const cartao = cartaoId && pagina
-          ? pagina.cartoes.find((c) => c.id === cartaoId)
-          : undefined;
-        const nomeCartao = cartao?.titulo[0] ?? cartaoId ?? "um cartão";
-        // Índice do bloco que realmente estourou: último bloco do cartão estourado.
-        let biSelecionado = 0;
-        if (cartaoId && pagina) {
-          const ci = pagina.cartoes.findIndex((c) => c.id === cartaoId);
-          if (ci >= 0) {
-            const blocos = pagina.cartoes[ci]?.blocos ?? [];
-            biSelecionado = Math.max(0, blocos.length - 1);
-          }
-        }
-        const aviso = document.createElement("div");
-        aviso.className = "aviso-estouro";
-        aviso.role = "alert";
-        aviso.tabIndex = 0;
-        aviso.title = `Conteúdo maior que a página: ${altura}px de ${ALTURA_PAGINA}px.`;
-        aviso.innerHTML = `<span class="estouro-icon" aria-hidden="true">!</span>
-          <span>Conteúdo maior que a página (${altura}px de ${ALTURA_PAGINA}px): "${nomeCartao}" será cortado no PDF.</span>`;
-        const aoCliqueAviso = () => {
-          if (!cartaoId || !pagina) return;
-          const ci = pagina.cartoes.findIndex((c) => c.id === cartaoId);
-          if (ci >= 0) selecionarBloco(ci, biSelecionado);
-          notificarConteudo();
-        };
-        aviso.onclick = aoCliqueAviso;
-        aviso.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") aoCliqueAviso(); };
-        const escala = pag.parentElement;
-        if (escala) escala.before(aviso);
-      }
+      const estouro = medirPagina(pag);
+      if (estouro) mapa.set(pag.dataset.pagina ?? "", estouro);
     });
-    const assinatura = [...mapa.entries()].map(([k, v]) => `${k}:${v.altura}:${v.cartaoId ?? ""}`).join("|");
-    if (assinatura !== ultimoMapa.current) {
-      ultimoMapa.current = assinatura;
+    const assinaturaMapa = [...mapa.entries()]
+      .map(([k, v]) => `${k}:${v.altura}:${v.cartaoId ?? ""}`)
+      .join("|");
+    if (assinaturaMapa !== ultimoMapa.current) {
+      ultimoMapa.current = assinaturaMapa;
       aoEstouro?.(mapa);
     }
   }
 
-  // Destaca o bloco selecionado via regra CSS scoped (sem tocar no DOM).
-  // A regra só existe no editor (nunca no render.ts / PDF exportado).
-  useLayoutEffect(() => {
-    const sel = estado.blocoSelecionado;
-    const el = container.current;
-    limparEstiloDestaque();
-    if (!sel || !el) return;
-    const pagina = estado.campanha?.paginas[estado.pagSelecionada];
-    const bloco = pagina?.cartoes[sel.ci]?.blocos[sel.bi];
-    if (!bloco) return;
-    const estilo = document.createElement("style");
-    estilo.type = "text/css";
-    estilo.textContent = `
-      .arte [data-bloco="${escapeCssId(bloco.id)}"] {
-        outline: 2px solid var(--primary);
-        outline-offset: 4px;
-        position: relative;
-      }
-      .arte [data-bloco="${escapeCssId(bloco.id)}"]::before {
-        content: attr(data-bloco-nome);
-        position: absolute;
-        top: -16px;
-        left: 4px;
-        background: var(--primary);
-        color: #0b1020;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 1px 6px;
-        border-radius: 4px;
-        z-index: 10;
-      }
-    `;
-    document.head.appendChild(estilo);
-    cssDestaque.current = estilo;
-    return () => limparEstiloDestaque();
-  }, [estado.blocoSelecionado, estado.pagSelecionada, estado.verTodas]);
-
-  // Clique em bloco: seleciona no painel direito (Phase 4)
+  // Clique em bloco: seleciona no painel direito.
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
@@ -198,48 +125,100 @@ export function Canvas({ estouros, aoEstouro }: Props): JSX.Element {
     return () => el.removeEventListener("click", handler);
   }, [selecionarBloco, notificarConteudo]);
 
-  function limparEstiloDestaque(): void {
-    if (cssDestaque.current) {
-      cssDestaque.current.remove();
-      cssDestaque.current = null;
-    }
-  }
-
-  /** Escapa um identificador para uso em seletor CSS (atributo data-bloco). */
-  function escapeCssId(id: string): string {
-    return id.replace(/[\\."]/g, "\\$&");
-  }
-
   const { campanha, catalogos } = e;
   if (!campanha || !catalogos) return <main className="canvas" ref={container} />;
 
   const paginas = campanha.paginas
     .map((p, i) => ({ p, i }))
-    .filter(({ i }) => {
-      // By default show only the selected page; "ver todas" is an explicit opt-in
-      if (estado.verTodas) return true;
-      return i === estado.pagSelecionada;
-    });
+    .filter(({ i }) => (estado.verTodas ? true : i === estado.pagSelecionada));
 
-  const pagSelecionada = campanha.paginas[estado.pagSelecionada];
-  const cabeNaPagina = pagSelecionada
-    ? !estouros.has(pagSelecionada.id)
-    : true;
+  // id do bloco selecionado (para a regra de outline via <style> do React).
+  const sel = estado.blocoSelecionado;
+  const paginaSel = campanha.paginas[estado.pagSelecionada];
+  const blocoSelId = sel && paginaSel ? paginaSel.cartoes[sel.ci]?.blocos[sel.bi]?.id : undefined;
+  const cabeNaPagina = paginaSel ? !estouros.has(paginaSel.id) : true;
+
+  /** Seleciona o primeiro bloco do cartão que estourou. */
+  function selecionarCartaoEstourado(paginaId: string, cartaoId: string): void {
+    const idx = campanha!.paginas.findIndex((p) => p.id === paginaId);
+    const pagina = campanha!.paginas[idx];
+    if (!pagina) return;
+    const ci = pagina.cartoes.findIndex((c) => c.id === cartaoId);
+    if (ci < 0) return;
+    selecionarPagina(idx);
+    selecionarBloco(ci, 0);
+    notificarConteudo();
+  }
 
   return (
     <main className="canvas" ref={container}>
-      {paginas.map(({ p, i }) => (
-        <div
-          className="escala arte"
-          key={p.id}
-          onClick={() => { selecionarPagina(i); } }
-        >
-          <div
-            className="pagina"
-            dangerouslySetInnerHTML={{ __html: renderPagina(p, { campanha, catalogos }) }}
-          />
-        </div>
-      ))}
+      {blocoSelId && (
+        <style>{`
+          .arte [data-bloco="${CSS.escape(blocoSelId)}"] {
+            outline: 2px solid var(--primary);
+            outline-offset: 4px;
+            position: relative;
+          }
+          .arte [data-bloco="${CSS.escape(blocoSelId)}"]::before {
+            content: attr(data-bloco-nome);
+            position: absolute;
+            top: -16px;
+            left: 4px;
+            background: var(--primary);
+            color: #0b1020;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            z-index: 10;
+          }
+        `}</style>
+      )}
+      {paginas.map(({ p, i }) => {
+        const estouro = estouros.get(p.id);
+        const cartao = estouro?.cartaoId
+          ? p.cartoes.find((c) => c.id === estouro.cartaoId)
+          : undefined;
+        const nomeCartao = cartao?.titulo[0] ?? estouro?.cartaoId ?? "um cartão";
+        const excesso = estouro ? Math.max(0, Math.round(estouro.altura - ALTURA_PAGINA)) : 0;
+        return (
+          <Fragment key={p.id}>
+            {estouro && (
+              <button
+                className="aviso-estouro"
+                type="button"
+                onClick={() => {
+                  if (estouro.cartaoId) selecionarCartaoEstourado(p.id, estouro.cartaoId);
+                }}
+              >
+                <TriangleAlert size={14} strokeWidth={2} aria-hidden="true" />
+                <span>
+                  Conteúdo passa da página em {excesso} px (cartão: {nomeCartao}). O excedente será cortado no PDF.
+                </span>
+              </button>
+            )}
+            <div className="moldura" style={{ width: w, height: h }} onClick={() => selecionarPagina(i)}>
+              <div
+                className="escala arte"
+                style={{
+                  width: LARGURA_PAGINA,
+                  height: ALTURA_PAGINA,
+                  transform: `scale(${z})`,
+                  transformOrigin: "top left",
+                }}
+                dangerouslySetInnerHTML={{ __html: renderPagina(p, { campanha, catalogos }) }}
+              />
+            </div>
+          </Fragment>
+        );
+      })}
+      <ZoomBar
+        zoom={e.zoom}
+        aoMudarZoom={(novo) => definirZoom(novo)}
+        ajustado={e.zoomAjustado}
+        aoAlternarAjuste={(ajustado) => alternarAjusteTela(ajustado)}
+        cabeNaPagina={cabeNaPagina}
+      />
     </main>
   );
 }
