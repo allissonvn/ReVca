@@ -4,6 +4,7 @@
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import { lerCampanha, lerCatalogos, criarCampanha } from "../api.js";
+import { renderLinha } from "../../shared/markup.js";
 import {
   salvarAgora,
   estado,
@@ -17,6 +18,7 @@ import { LeftRail } from "../componentes/LeftRail.js";
 import { RightPanel } from "../componentes/RightPanel.js";
 import { Canvas } from "../componentes/Canvas.js";
 import { ModalExportar } from "../componentes/ModalExportar.js";
+import { CampoCor } from "../componentes/CampoCor.js";
 import { exportar } from "../exportar.js";
 import { Mark } from "../ui/Mark.js";
 import { Button } from "../ui/Button.js";
@@ -97,13 +99,16 @@ export function Editor({ id }: { id: string }): JSX.Element {
         <Mark tamanho={32} aria-label="REVCA — Editor" />
         <div className="topbar-campanha">
           <FileText size={16} strokeWidth={2} aria-hidden="true" />
-          <input
-            className="topbar-titulo"
-            value={c.titulo}
-            aria-label="Título da campanha"
-            readOnly={leitor}
-            onChange={(e) => { c.titulo = e.target.value; marcarSujo(); }}
-          />
+          {!leitor ? (
+            <CampoCor
+              marcado={c.titulo}
+              aria="Título da campanha"
+              placeholder="Título da campanha"
+              aoMudar={(m) => { c.titulo = m; marcarSujo(); }}
+            />
+          ) : (
+            <span className="topbar-titulo-display" dangerouslySetInnerHTML={{ __html: renderLinha(c.titulo) }} />
+          )}
         </div>
         <div className="topbar-mes">
           <Calendar size={16} strokeWidth={2} aria-hidden="true" />

@@ -282,8 +282,38 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 .cam-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cam-acoes { display: flex; gap: 6px; padding: 10px 12px; }
 
-/* ---- Editor de tabela (bloco "Tabela de valores") ---- */
-.tabela-editor { display: flex; flex-direction: column; gap: 8px; }
+/* ---- Editor de tabela (entidade Tabela separada) ---- */
+.tabela-editor { display: flex; flex-direction: column; gap: 12px; }
+.tabela-editor-header { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--borda); }
+.tabela-editor-titulo-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tabela-editor-titulo-row .campo-cor { flex: 1; min-width: 200px; }
+.tabela-editor-cor-select { min-width: 100px; height: 36px; padding: 0 8px; font-size: 13px; }
+.tabela-editor-ativo { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.tabela-editor-ativo input { width: 14px; height: 14px; accent-color: var(--primario); }
+.tabela-editor-colunas { display: flex; align-items: center; gap: 8px; }
+.tabela-editor-coluna-btns { display: flex; gap: 4px; }
+
+.tabela-editor-fieldset { border: 1px solid var(--borda); border-radius: var(--raio-controle); padding: 10px; background: var(--surface-2); }
+.tabela-editor-fieldset legend { font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 4px; }
+.tabela-editor-contagem { font-weight: 400; color: var(--texto-fraco); margin-left: 6px; }
+
+.tabela-editor-grid { display: grid; gap: 6px; min-width: 0; }
+.tabela-editor-cabecalho { background: var(--superficie); padding: 6px; border-radius: var(--raio-controle); border: 1px solid var(--borda); }
+.tabela-editor-celula-cabecalho { font-weight: 700; }
+.tabela-editor-linha-celulas { background: var(--superficie); padding: 6px; border-radius: var(--raio-controle); border: 1px solid var(--borda); }
+.tabela-editor-celula-secao { font-weight: 700; background: var(--selected) !important; color: var(--primario-texto) !important; }
+.tabela-editor-celula-dados { }
+
+.tabela-editor-linha { display: flex; align-items: stretch; gap: 8px; padding: 6px 0; }
+.tabela-editor-grip { display: flex; align-items: center; justify-content: center; width: 24px; color: var(--muted); cursor: grab; flex-shrink: 0; }
+.tabela-editor-grip:hover { color: var(--primario); }
+.tabela-editor-linha .tabela-editor-grid { flex: 1; min-width: 0; }
+.tabela-editor-acoes { display: flex; flex-direction: column; gap: 4px; align-items: center; padding-top: 4px; }
+.tabela-editor-vazia { color: var(--muted); font-size: 13px; padding: 16px; text-align: center; background: var(--superficie); border-radius: var(--raio-controle); border: 1px dashed var(--borda); }
+.tabela-editor-botoes { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.tabela-editor .campo-cor { min-width: 0; }
+
+/* Legacy support for old class names */
 .tabela-editor-topo { display: flex; align-items: center; gap: 6px; }
 .tabela-editor-rotulo { font-size: 12px; font-weight: 600; color: var(--muted); }
 .tabela-editor-celulas { display: grid; gap: 6px; min-width: 0; }
@@ -293,4 +323,3 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 13
 .tabela-editor-linha .tabela-editor-celulas { flex: 1; }
 .tabela-editor-acoes { display: flex; gap: 2px; }
 .tabela-editor-botoes { display: flex; gap: 6px; flex-wrap: wrap; }
-.tabela-editor .campo-cor { min-width: 0; }
